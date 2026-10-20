@@ -714,3 +714,121 @@ BOM: True
 - 时间轴不绘制时间无法解析的 Segment，只用文字提示数量。
 - 导出是纯前端生成，不调用后端；数据来自当前 GET/POST 响应。
 - 没有实现报告历史列表（题目不属于加分项）。
+
+## Phase 7 — 文档与最终验收
+
+### 设计原理
+
+1. **README 是唯一启动入口**
+   - 技术栈、Node/pnpm 版本、安装、数据库初始化、启动命令、端口、测试命令都写在 README。
+   - 不在 README 之外假设额外步骤。
+2. **干净副本验证**
+   - 排除 `node_modules`、`dist`、`.git`、`server/data` 复制到临时目录；
+   - 执行 `pnpm install --frozen-lockfile`、`pnpm test`、`pnpm build`、`pnpm db:init`；
+   - 再用编译后的 `server/dist/index.js` 启动临时端口，验证 health。
+3. **交付文档分工**
+   - `README.md`：可运行入口与 T01–T15 结论；
+   - `docs/DECISIONS.md`：用户明确拍板的 D-001～D-003；
+   - `docs/PITFALLS.md`：真实踩坑；
+   - `docs/VERIFICATION.md`：每阶段证据；
+   - `docs/AI_USAGE.md`：AI 工具、生成范围、人工验证。
+4. **视觉参考验证**
+   - 只借鉴 phibotics.cn 的深色技术风格、紫色/暖橙点缀和细网格；
+   - 未复制 logo、图片、文案、字体文件；UI 中全部为项目自有文字与 CSS。
+
+### 验证命令
+
+```bash
+# 在仓库根目录
+pnpm install --frozen-lockfile
+pnpm test
+pnpm typecheck
+pnpm build
+pnpm db:init
+```
+
+干净副本额外验证：
+
+```bash
+# 将仓库复制到临时目录，排除 node_modules / dist / .git / server/data
+pnpm install --frozen-lockfile
+pnpm test
+pnpm build
+pnpm db:init
+
+# 临时端口启动编译后的后端
+PORT=3998 QC_DB_PATH=/tmp/qc-clean-test.sqlite node server/dist/index.js
+curl -s http://127.0.0.1:3998/api/health
+```
+
+### 预期结果
+
+- 干净副本安装成功，无锁文件漂移；
+- `pnpm test`：70 passed；
+- `pnpm build`：client / server 均成功；
+- `pnpm db:init`：创建 `server/data/qc.sqlite` 和两张表；
+- 编译后端启动后 health 返回 `{"status":"ok"}`；
+- README 的 T01–T15 表全部有证据。
+
+### 实际证据
+
+执行日期：2026-10-20
+
+```text
+临时目录：/tmp/qc-clean
+$ pnpm install --frozen-lockfile
+Lockfile is up to date, resolution step is skipped
+Packages: +179
+Done
+
+$ pnpm test
+client: 1 file, 2 tests passed
+server: 5 files, 68 tests passed
+合计 70 passed
+
+$ pnpm build
+server build: Done
+client build: ✓ built in 269ms
+
+$ pnpm db:init
+[db] initialized /private/tmp/qc-clean/server/data/qc.sqlite
+
+$ PORT=3998 QC_DB_PATH=/tmp/qc-clean-test.sqlite node server/dist/index.js
+[server] QC API listening on http://localhost:3998
+[server] SQLite: /tmp/qc-clean-test.sqlite
+
+$ curl -s http://127.0.0.1:3998/api/health
+{"status":"ok"}
+```
+
+视觉与交互验收：
+
+```text
+- 上传示例 CSV -> 6 / 2 / 4
+- 时间轴 -> 6 条 bar，s4 右端截断
+- Invalid 筛选 -> 4 行，统计不变
+- 导出 CSV -> 6 条数据 + 表头，带 BOM
+- 刷新 -> Network GET /api/qc/{runId} 200
+- 错误请求 -> 旧报告消失、URL 清空
+```
+
+### T01–T15 结论
+
+全部 ✅ 已通过，逐项证据见 `README.md` 的验收清单与 `docs/PLAN.md` 第 12 节。
+T14 为浏览器手工验收；其余场景均有自动化测试或 curl/进程重启证据。
+
+### 自己检查时重点看什么
+
+1. 按 README 从零执行，而不是跳过 `pnpm db:init` 或手工改端口。
+2. 干净副本中 `pnpm test` 是否仍为 70 passed。
+3. `pnpm build` 是否同时生成前后端产物。
+4. 编译后的后端能否用临时 DB 启动并返回 health。
+5. README 的 T01–T15 是否与 `docs/VERIFICATION.md` 的证据一致。
+6. 视觉验收是否只借鉴风格，没有把官网资源带进仓库。
+
+### 已知限制（最终）
+
+- 不做报告历史列表、登录、视频播放、编辑/删除、分页。
+- 无自动化浏览器 E2E；T14 手工验收。
+- 重叠检查 O(n²)，面向 ≤100 条记录。
+- 未公开边界口径按计划书 6.2 / 6.3 实现。
