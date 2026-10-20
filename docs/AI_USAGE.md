@@ -40,7 +40,7 @@ AI 生成了：
 | D-009 | 引入 shared workspace 包 | 用户自主提出 | API 类型收敛到 `@skillfactory/shared` | `pnpm typecheck`、build |
 | D-010 | 增加 Playwright E2E | 用户自主提出 | 自动覆盖上传、筛选、刷新、导出与失败清空旧结果 | `pnpm test:e2e` 1 passed |
 
-这三项决策分别影响后端工具链、依赖安装方式和视觉语言，属于会被评审直接观察到的工程选择，而不是形式化记录。
+这些决策（D-001～D-010）分别影响后端工具链、依赖安装、类型边界、浏览器验收和视觉语言，属于会被评审直接观察到的工程选择，而不是形式化记录。
 
 以下内容属于 **AI 建议/实现默认值**，不冒充用户决策：
 
@@ -64,7 +64,7 @@ pnpm test
 
 结果：
 
-- `pnpm typecheck`：client / server 均通过；
+- `pnpm typecheck`：shared、client/server 的 src + tests，以及 Playwright e2e 均通过；
 - `pnpm build`：client / server 均通过；
 - `pnpm test`：**75 passed**（server 68，client 7）；
 - `pnpm test:e2e`：1 passed（Playwright，独立 3101/5273 端口和临时 SQLite）。

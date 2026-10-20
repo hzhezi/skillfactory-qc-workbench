@@ -731,7 +731,7 @@ BOM: True
    - 再用编译后的 `server/dist/index.js` 启动临时端口，验证 health。
 3. **交付文档分工**
    - `README.md`：可运行入口与 T01–T15 结论；
-   - `docs/DECISIONS.md`：用户明确拍板的 D-001～D-003；
+   - `docs/DECISIONS.md`：用户明确拍板/审查提出的 D-001～D-010；
    - `docs/PITFALLS.md`：真实踩坑；
    - `docs/VERIFICATION.md`：每阶段证据；
    - `docs/AI_USAGE.md`：AI 工具、生成范围、人工验证。

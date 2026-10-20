@@ -19,6 +19,7 @@
 | 运行时 | Node.js | 24.14.1（要求 >= 22） |
 | 包管理 | pnpm | 11.7.0 |
 | 前端 | React + TypeScript | 19.3.1 / 7.0.2 |
+| 共享类型 | `@skillfactory/shared` | type-only workspace 包 |
 | 前端构建 | Vite | 8.3.4 |
 | 后端 | Node.js + Express + TypeScript | 5.3.0 |
 | SQLite 驱动 | better-sqlite3 | 13.0.3 |
@@ -129,7 +130,7 @@ pnpm typecheck
 pnpm build
 ```
 
-`pnpm typecheck` 同时检查 `src` 与 `tests`（使用 `tsconfig.test.json`）。
+`pnpm typecheck` 同时检查 shared、client/server 的 `src`、`tests` 和 Playwright `e2e`（使用 `tsconfig.test.json` / `tsconfig.e2e.json`）。
 
 当前结果：
 
@@ -274,8 +275,8 @@ curl -i http://localhost:3001/api/qc/<runId>
 
 ## AI 开发记录
 
-- 使用工具：OpenCode CLI（模型 `deepseek-flash`）、pnpm、Vitest、Supertest、Chrome DevTools MCP。
-- AI 生成范围：工程骨架、后端 CSV/QC/持久化/API、前端页面与样式、测试、文档草稿。
+- 使用工具：OpenCode CLI（模型 `deepseek-flash`）、pnpm、Vitest、Supertest、Playwright、Chrome DevTools MCP。
+- AI 生成范围：工程骨架、shared 类型包、后端 CSV/QC/持久化/API、前端页面与样式、单元/集成/E2E 测试、文档草稿。
 - 用户参与的关键选择（详见 `docs/DECISIONS.md`）：
 
 | 决策 | 来源 | 对交付的实际影响 |
@@ -291,15 +292,16 @@ curl -i http://localhost:3001/api/qc/<runId>
 | D-009 引入 shared workspace 包 | 用户自主提出 | API 类型收敛到 `@skillfactory/shared`，前后端共用一份定义 |
 | D-010 增加 Playwright E2E | 用户自主提出 | 自动覆盖上传、筛选、刷新、导出、失败清空旧结果 |
 
-这三项决策分别约束了后端工具链、依赖安装方式和视觉语言，不是装饰性选择。
+这些决策（D-001～D-010）共同约束了后端工具链、依赖安装、类型边界、浏览器验收和视觉语言，不是装饰性选择。
 - 正确性如何检查：
   - `pnpm typecheck`、`pnpm build`；
   - `pnpm test`：75 个测试，含 QC 规则、持久化、API 契约、真实进程重启；
+  - `pnpm test:e2e`：1 个 Playwright 测试，覆盖上传、筛选、刷新、导出与失败清空旧结果；
   - curl 手工验证 POST / GET / 404 / 400；
   - 浏览器上传示例 CSV、切换筛选、刷新页面并检查 Network 的 `GET /api/qc/{runId}`；
   - 导出 CSV 后检查 BOM、行数与转义。
 - 详细证据：`docs/VERIFICATION.md`；真实踩坑：`docs/PITFALLS.md`。
-- AI 建议的方案（Node/Express、csv-parse、better-sqlite3 等）属于实现默认值，不冒充用户决策；用户决策记录只包含 D-001～D-003。
+- AI 建议的方案（Node/Express、csv-parse、better-sqlite3 等）属于实现默认值，不冒充用户决策；用户决策/审查记录为 D-001～D-010。
 
 更完整的 AI 使用说明见 `docs/AI_USAGE.md`。
 
