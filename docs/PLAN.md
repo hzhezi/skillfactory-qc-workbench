@@ -1,8 +1,8 @@
 # SkillFactory Lite — 实施计划书
 
-- 版本：v0.6
+- 版本：v0.7
 - 日期：2026-10-20
-- 状态：**Phase 4 已完成并验证；Phase 5 待开始**
+- 状态：**Phase 5 已完成并验证；Phase 6 待开始**
 - 需求来源：`题目要求.md`
 - 协作规范：`AGENTS.md`
 - 已确认决策：`docs/DECISIONS.md`（D-001 TypeScript、D-002 pnpm、D-003 视觉参考）
@@ -673,17 +673,24 @@ runId: string | null   // 来自 URL query
 
 ### Phase 5 — 刷新恢复与竞态保护
 
-- [ ] 成功后将 `runId` 写入 URL query
-- [ ] 页面加载时按 `runId` 调用 `GET /api/qc/{runId}`
-- [ ] 处理 404、网络错误与加载状态
-- [ ] 新请求失败时不显示旧报告
-- [ ] 实现请求竞态保护
+- [x] 成功后将 `runId` 写入 URL query
+- [x] 页面加载时按 `runId` 调用 `GET /api/qc/{runId}`
+- [x] 处理 404、网络错误与加载状态
+- [x] 新请求失败时不显示旧报告
+- [x] 实现请求竞态保护
 
 **完成标准**
 
 - 刷新页面后报告仍显示，且 Network 面板确实请求了 `GET /api/qc/{runId}`
 - 手动改错 `runId` 显示清楚的 404 提示
 - 先成功一份、再提交无效文件，页面不显示上一份结果
+
+**验证结果**
+
+- 2026-10-20 已执行：上传成功后 URL 变为 `?runId=...`；刷新后 Network 出现 `GET /api/qc/{runId}` 并返回 200。
+- `?runId=qc-missing` 显示 404 `REPORT_NOT_FOUND` 错误。
+- 成功报告后提交缺少 action 表头的 CSV：URL 被清空、旧报告消失、显示 `MISSING_HEADER`；再次刷新为空状态。
+- 开发环境 StrictMode 会产生一次 aborted GET，这是预期行为；最终成功请求仍为 200。
 
 ### Phase 6 — 加分项
 
@@ -867,6 +874,7 @@ runId: string | null   // 来自 URL query
 | 2026-10-20 | 增加第 17 节评分标准对照 | 按题目第 7 节逐项自检，补齐交付验证清单 |
 | 2026-10-20 | v0.5：Phase 3 完成 | API、错误契约、真实进程重启 68 个测试通过 |
 | 2026-10-20 | v0.6：Phase 4 完成 | React 上传、统计、表格、筛选、错误提示 |
+| 2026-10-20 | v0.7：Phase 5 完成 | URL runId、刷新 GET、404、失败清空旧结果、竞态保护 |
 
 ## 17. 评分标准对照（交付前自检）
 
@@ -877,7 +885,7 @@ runId: string | null   // 来自 URL query
 | QC 业务逻辑 | 25 | 规则测试 13 个；API 级 T02/T05/T06/T07 断言；官方示例 2/4 | 已完成核心与 API 断言 | 最终 T01–T15 自检 |
 | SQLite 数据持久化 | 15 | 两张表、事务、读回、关闭重开、真实进程重启、写入失败 500 | 已完成 | 最终重启手工复验 |
 | CSV 解析与 API 契约 | 15 | CSV 29 个测试；三条固定接口；400/404/500；输入顺序 | 已完成 | 最终 curl 演示记录 |
-| React 前端功能 | 15 | 上传、Loading、统计、表格、筛选、错误提示已完成 | Phase 4 完成，刷新恢复未做 | 刷新恢复与竞态（Phase 5） |
+| React 前端功能 | 15 | 上传、Loading、统计、表格、筛选、错误、URL 刷新恢复、竞态保护已完成 | 已完成必做前端 | 最终 T14 复验 |
 | 自动化测试 | 10 | 68 个测试通过 | 已超过要求 | README 写明命令；干净环境复现 |
 | 可运行性与代码质量 | 5 | workspace、typecheck、build 通过 | 部分完成 | README 从零启动；结构与注释复查 |
 | AI 使用说明与交付 | 10 | DECISIONS、PITFALLS、VERIFICATION | 部分完成 | `AI_USAGE.md`、README 中的 AI 记录、完成情况与已知问题 |

@@ -1,5 +1,5 @@
-import { useEffect, useMemo, useState } from "react";
-import { ApiError, createQcReport } from "./api/qc";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { ApiError, createQcReport, getQcReport } from "./api/qc";
 import { EmptyState } from "./components/EmptyState";
 import { ErrorBanner } from "./components/ErrorBanner";
 import { FilterBar } from "./components/FilterBar";
@@ -11,7 +11,7 @@ import { UploadForm } from "./components/UploadForm";
 import type { QcReport, SegmentFilter } from "./types/qc";
 
 type HealthState = "checking" | "ok" | "error";
-type LoadingState = "idle" | "submitting";
+type LoadingState = "idle" | "fetching" | "submitting";
 
 const HEALTH_LABELS: Record<HealthState, string> = {
   checking: "检查中",
@@ -25,6 +25,11 @@ export default function App() {
   const [loading, setLoading] = useState<LoadingState>("idle");
   const [error, setError] = useState<ApiError | null>(null);
   const [filter, setFilter] = useState<SegmentFilter>("ALL");
+
+  // 用递增序号丢弃过期响应；AbortController 让旧请求尽快结束。
+  // 这两个机制共同防止「旧报告晚返回，覆盖新请求结果」。
+  const requestSeq = useRef(0);
+  const abortRef = useRef<AbortController | null>(null);
 
   const isLoading = loading !== "idle";
 
@@ -68,21 +73,100 @@ export default function App() {
     };
   }, []);
 
+  useEffect(() => {
+    const runId = readRunIdFromUrl();
+
+    if (runId !== null) {
+      // 刷新恢复：浏览器只保存 runId，报告本身必须重新从 SQLite 读取。
+      void loadReport(runId);
+    }
+
+    return () => {
+      // 卸载或 StrictMode 重放时取消未完成请求，避免更新已卸载组件。
+      abortRef.current?.abort();
+    };
+    // 只在首次挂载时读取 URL；后续新报告由 handleSubmit 主动写 URL。
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  function beginRequest(): { seq: number; controller: AbortController } {
+    const seq = requestSeq.current + 1;
+    requestSeq.current = seq;
+    abortRef.current?.abort();
+
+    const controller = new AbortController();
+    abortRef.current = controller;
+
+    return { seq, controller };
+  }
+
+  async function loadReport(runId: string) {
+    const { seq, controller } = beginRequest();
+
+    setLoading("fetching");
+    setError(null);
+
+    try {
+      const loaded = await getQcReport(runId, controller.signal);
+
+      if (seq !== requestSeq.current) {
+        return;
+      }
+
+      setReport(loaded);
+      setFilter("ALL");
+    } catch (caught) {
+      if (isAbortError(caught) || seq !== requestSeq.current) {
+        return;
+      }
+
+      setReport(null);
+      setError(toApiError(caught));
+    } finally {
+      if (seq === requestSeq.current) {
+        setLoading("idle");
+      }
+    }
+  }
+
   async function handleSubmit(file: File, durationMs: number) {
-    // 新请求开始前清空旧结果，避免请求失败时旧报告被误认为新报告。
+    const { seq, controller } = beginRequest();
+
+    // 新请求开始前清空旧结果并从 URL 移除旧 runId：
+    // 这样失败时不会显示上一份报告，刷新也不会又回到旧报告。
     setReport(null);
     setError(null);
     setFilter("ALL");
+    updateRunIdInUrl(null);
     setLoading("submitting");
 
     try {
-      const nextReport = await createQcReport(file, durationMs);
+      const nextReport = await createQcReport(
+        file,
+        durationMs,
+        controller.signal,
+      );
+
+      if (seq !== requestSeq.current) {
+        return;
+      }
+
       setReport(nextReport);
       setFilter("ALL");
+
+      // 成功后把 runId 写入 URL；刷新时据此调用 GET /api/qc/{runId}。
+      updateRunIdInUrl(nextReport.runId);
     } catch (caught) {
+      if (isAbortError(caught) || seq !== requestSeq.current) {
+        return;
+      }
+
+      setReport(null);
       setError(toApiError(caught));
     } finally {
-      setLoading("idle");
+      if (seq === requestSeq.current) {
+        setLoading("idle");
+      }
     }
   }
 
@@ -129,7 +213,13 @@ export default function App() {
             {error !== null ? <ErrorBanner error={error} /> : null}
 
             {isLoading ? (
-              <LoadingPanel label="正在解析 CSV、执行 QC 并写入 SQLite…" />
+              <LoadingPanel
+                label={
+                  loading === "fetching"
+                    ? "正在从 SQLite 读取已保存报告…"
+                    : "正在解析 CSV、执行 QC 并写入 SQLite…"
+                }
+              />
             ) : null}
 
             {!isLoading && error === null && report === null ? (
@@ -175,6 +265,33 @@ export default function App() {
       </footer>
     </div>
   );
+}
+
+function readRunIdFromUrl(): string | null {
+  const value = new URLSearchParams(window.location.search).get("runId");
+  const trimmed = value?.trim() ?? "";
+
+  return trimmed === "" ? null : trimmed;
+}
+
+function updateRunIdInUrl(runId: string | null): void {
+  const url = new URL(window.location.href);
+
+  if (runId === null) {
+    url.searchParams.delete("runId");
+  } else {
+    url.searchParams.set("runId", runId);
+  }
+
+  window.history.replaceState(
+    null,
+    "",
+    `${url.pathname}${url.search}${url.hash}`,
+  );
+}
+
+function isAbortError(error: unknown): boolean {
+  return error instanceof DOMException && error.name === "AbortError";
 }
 
 function toApiError(error: unknown): ApiError {

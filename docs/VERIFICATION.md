@@ -532,3 +532,91 @@ server build: Done
 
 - 刷新页面后报告会丢失，因为 runId 还没有写入 URL / localStorage；Phase 5 补齐。
 - 请求竞态保护、404 恢复、B01 时间轴、B02 CSV 导出尚未实现。
+
+## Phase 5 — 刷新恢复与竞态保护
+
+### 设计原理
+
+1. **浏览器只保存 runId**
+   - 成功后用 `history.replaceState` 写入 `?runId=...`。
+   - 不把整份报告放进 localStorage；刷新时必须重新请求后端。
+2. **刷新回源**
+   - 首次挂载读取 URL query，若有 runId 则调用 `GET /api/qc/{runId}`。
+   - 加载中显示 `正在从 SQLite 读取已保存报告…`。
+   - 404 显示 `REPORT_NOT_FOUND` 错误，不伪造数据。
+3. **新请求清空旧结果**
+   - 提交新文件时先 `setReport(null)` 并从 URL 移除旧 runId。
+   - 失败后不会把上一份报告当成新报告；刷新也不会回到旧报告。
+4. **竞态保护**
+   - `requestSeq` 递增序号：只有最新请求的响应可以更新状态。
+   - `AbortController` 取消旧请求，减少无意义的网络等待。
+   - 卸载或 StrictMode 重放时 abort，避免更新已卸载组件。
+5. **开发环境 StrictMode 说明**
+   - React StrictMode 会在开发环境重复执行 effect，因此 Network 里可能看到一次 aborted GET，紧接着一次 200 GET。
+   - 这是预期的开发行为；生产构建只执行一次。验收时看最终 200 响应即可。
+
+### 验证命令
+
+```bash
+pnpm typecheck
+pnpm build
+pnpm dev
+```
+
+浏览器步骤：
+
+1. 上传 `server/tests/fixtures/sample-segments.csv`，duration 填 `10000`，开始检查。
+2. 确认地址栏出现 `?runId=...`。
+3. 刷新页面。
+4. 打开 Network 面板，确认存在 `GET /api/qc/{runId}` 且状态 200。
+5. 把 URL 改成 `?runId=qc-missing`，刷新，确认显示 404 错误。
+6. 回到有效报告，再上传一个缺少 `action` 表头的 CSV，确认旧报告消失、URL 清空、显示错误。
+7. 刷新页面，确认不会恢复旧报告。
+
+### 预期结果
+
+- 刷新后报告统计、表格、筛选仍然存在，且确实来自 GET 请求。
+- URL 中的 runId 与报告工具栏中的 RUN ID 一致。
+- 404：显示 `REPORT_NOT_FOUND` 和「报告不存在」。
+- 新提交失败：显示 `MISSING_HEADER`，旧报告和旧 runId 都不保留。
+- 失败后刷新：空状态，不显示旧报告。
+
+### 实际证据
+
+执行日期：2026-10-20
+
+```text
+上传 sample-segments.csv（durationMs=10000）
+-> 地址栏变为 ?runId=qc-b9a725ce-...
+-> 刷新后仍显示 6 / 2 / 4
+
+Network:
+GET /api/health                         304
+GET /api/qc/qc-b9a725ce-... (StrictMode abort)  ERR_ABORTED
+GET /api/health                         304
+GET /api/qc/qc-b9a725ce-...             200
+
+访问 ?runId=qc-missing
+-> 显示 REPORT_NOT_FOUND / 报告不存在
+
+有效报告后上传缺少 action 表头的 CSV
+-> URL 变为 /（无 runId）
+-> 旧报告消失
+-> 显示 MISSING_HEADER / 缺少必要表头：action
+-> 再次刷新为空状态
+```
+
+### 自己检查时重点看什么
+
+1. 刷新后 Network 是否真的有 `GET /api/qc/{runId}`，而不是从 localStorage 读取整份报告。
+2. URL 中的 runId 是否与页面显示一致。
+3. 404 是否显示后端 code 和非空错误文案。
+4. 新提交失败后旧报告是否彻底消失；刷新不能把旧报告带回来。
+5. StrictMode 下的 aborted 请求是否只影响开发环境，最终请求是否 200。
+6. 点击筛选是否不会触发 `/api/qc` 请求。
+
+### 已知限制（Phase 5）
+
+- 使用 `replaceState`，浏览器后退不会回到上一份报告；题目不要求历史列表。
+- 404 的 runId 会保留在 URL 中，刷新仍会显示 404；这是为了保留可复现的链接。
+- 还没有时间轴和 CSV 导出；Phase 6 补齐。
