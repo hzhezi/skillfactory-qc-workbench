@@ -32,3 +32,14 @@ export interface QcEvaluation {
   invalid: number;
   segments: EvaluatedSegment[];
 }
+
+/**
+ * 已持久化的 QC 报告。
+ *
+ * runId / createdAt 由持久化层生成；读取时从 SQLite 还原，
+ * 因此 API 的 GET 响应和 POST 成功响应可以共用同一个类型。
+ */
+export interface QcReport extends QcEvaluation {
+  runId: string;
+  createdAt: string;
+}

@@ -222,3 +222,111 @@ errors = [[], ["OVERLAP"], ["OVERLAP"], ["OUT_OF_BOUNDS"], ["EMPTY_ACTION"], []]
 - 还没有 HTTP API、SQLite、报告 ID 和前端上传。
 - `durationMs` 目前由规则函数自身校验；HTTP 层在 Phase 3 还会再校验一次。
 - 没有做性能优化；题目限定小型 CSV。
+
+## Phase 2 — SQLite 持久化
+
+### 设计原理
+
+1. **两张关联表**
+   - `qc_runs` 保存报告级信息：`id`、`duration_ms`、统计、`created_at`。
+   - `qc_segments` 每条 Segment 独立一行，通过 `run_id` 关联；`(run_id, row_index)` 唯一。
+   - 不把整份报告塞进一个 JSON 字段，重复 `segment_id` 也不会互相覆盖。
+2. **数据库层约束**
+   - `duration_ms > 0`、`valid + invalid = total`、`status IN ('VALID','INVALID')` 由 SQLite 约束兜底。
+   - `errors_json` 保存错误码数组；读取时解析并校验，损坏时抛错而不是返回半份数据。
+3. **事务边界**
+   - 一个事务内先写 `qc_runs`，再逐条写 `qc_segments`。
+   - 任一条失败会回滚，不会留下「有报告、没 Segment」的半成品。
+   - 只有事务提交成功，`saveReport()` 才返回；HTTP 层后续拿到返回后才响应 200。
+4. **报告 ID 与时间**
+   - `runId = qc-<randomUUID()>`，非空、唯一、URL 安全。
+   - `createdAt = new Date().toISOString()`，UTC、带 `Z`。
+5. **重启恢复**
+   - 测试中关闭连接后，用同一 SQLite 文件重新打开，再按 `runId` 读取。
+   - 读取不依赖内存缓存，所有字段从数据库还原。
+6. **测试隔离**
+   - 每个测试用 `mkdtempSync` 创建临时目录与独立 SQLite 文件。
+   - `afterEach` 关闭连接并删除临时目录，不污染 `server/data/qc.sqlite`。
+
+### 验证命令
+
+```bash
+# 全部测试（CSV + 规则 + 持久化）
+pnpm test
+
+# 单独运行持久化测试
+pnpm --filter server exec vitest run tests/persistence.test.ts
+
+# 类型检查与构建
+pnpm typecheck
+pnpm build
+
+# 初始化开发数据库
+pnpm db:init
+
+# 检查表结构
+sqlite3 server/data/qc.sqlite ".tables"
+sqlite3 server/data/qc.sqlite ".schema qc_runs"
+sqlite3 server/data/qc.sqlite ".schema qc_segments"
+```
+
+### 预期结果
+
+- `pnpm test`：`3 passed (3)`，`53 passed (53)`。
+- `pnpm db:init`：输出 `[db] initialized .../server/data/qc.sqlite`。
+- `.tables`：至少包含 `qc_runs` 和 `qc_segments`。
+- `.schema`：能看到主键、外键、`UNIQUE (run_id, row_index)`、`CHECK` 约束。
+- 持久化测试覆盖：
+  - 保存后按 `runId` 读回，统计、Segment 顺序、错误码一致；
+  - 数据库文件真实落盘；
+  - 重复 `segment_id` 分别保存；
+  - 无法解析的起止时间为 `null`；
+  - 两次报告 ID 不同、互不覆盖；
+  - 关闭并重开同一文件后仍能读取；
+  - 事务中途失败回滚；
+  - 统计不一致拒绝保存；
+  - 不存在的 `runId` 返回 `null`；
+  - `errors_json` 损坏时读取报错。
+
+### 实际证据
+
+执行日期：2026-10-20
+
+```text
+$ pnpm test
+server test$ vitest run
+ ✓ tests/qc.rules.test.ts (13 tests)
+ ✓ tests/csv.test.ts (29 tests)
+ ✓ tests/persistence.test.ts (11 tests)
+
+ Test Files  3 passed (3)
+      Tests  53 passed (53)
+```
+
+```text
+$ pnpm db:init
+$ tsx src/db/init.ts
+[db] initialized /Users/hazer/code/skillfactory-qc-workbench/server/data/qc.sqlite
+
+$ sqlite3 server/data/qc.sqlite ".tables"
+qc_runs     qc_segments
+
+$ curl -i http://127.0.0.1:3001/api/health
+HTTP/1.1 200 OK
+{"status":"ok"}
+```
+
+### 自己检查时重点看什么
+
+1. `.tables` 是否同时出现两张表；只有一张表不满足题目要求。
+2. `.schema qc_segments` 是否有 `run_id` 外键和 `UNIQUE (run_id, row_index)`。
+3. 持久化测试中「关闭并重新打开同一个数据库文件后仍能读取」是否通过。
+4. 「事务中途失败时回滚」是否通过；失败后 `qc_runs` 和 `qc_segments` 计数都应为 0。
+5. 重复 `segment_id` 测试中，读回的两条 Segment 是否都存在。
+6. 测试是否使用临时目录；运行后 `server/data/qc.sqlite` 不应被测试写入新报告。
+
+### 已知限制（Phase 2）
+
+- 还没有 `POST /api/qc` 与 `GET /api/qc/{runId}`，因此还不能通过 HTTP 手工创建报告。
+- 真实重启验收（T12）要等 Phase 3 API 完成后，通过 HTTP 创建报告再重启服务验证。
+- 没有数据库迁移系统；当前使用 `CREATE TABLE IF NOT EXISTS`。

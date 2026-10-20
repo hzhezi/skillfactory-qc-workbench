@@ -35,6 +35,7 @@
 | P-001 | 2026-10-20 | 环境 / 依赖安装 | `pnpm install` 拒绝执行 esbuild 安装脚本 | pnpm 11 默认阻止依赖 postinstall；esbuild 需要运行 `install.js` 获取平台二进制；`package.json` 的 `pnpm` 字段已不再读取 | 执行 `pnpm approve-builds --all`，并在 `pnpm-workspace.yaml` 写入 `allowBuilds` | `pnpm install` 成功；`pnpm build` 中 Vite 正常构建 | 已解决 |
 | P-002 | 2026-10-20 | 类型检查 / 构建 | server 的 `tsc` 报 `TS5108`，无法识别 `moduleResolution=node10` | 安装到 TypeScript 7.0.2，该版本移除了旧的 `node10` resolution | 将 `server/tsconfig.json` 改为 `module: Node16` + `moduleResolution: Node16` | `pnpm typecheck`、`pnpm build` 均通过 | 已解决 |
 | P-003 | 2026-10-20 | CSV 解析 | 前导空白行导致合法表头被误判为 `INVALID_CSV` | `csv-parse` 在 `relax_column_count: false` 时把首条空白记录当成列数基准 | 改为 `relax_column_count: true`，过滤空白行后手动校验数据行列数 | `pnpm test` 42 个测试全部通过 | 已解决 |
+| P-004 | 2026-10-20 | 环境 / 依赖安装 | 安装 `better-sqlite3` 时 tarball 下载卡住，命令超时 | 当前 registry 为 npmmirror，`better-sqlite3-13.0.3.tgz` 请求报错并反复重试 | 使用 `--registry=https://registry.npmjs.org` 重新安装；原生模块通过 node-gyp 编译成功 | `pnpm --filter server add better-sqlite3 --registry=...` 成功；持久化测试 11 个通过 | 已解决 |
 
 ### P-001 pnpm 11 忽略 esbuild 安装脚本
 
@@ -87,4 +88,22 @@
 - 解决方案：将 `relax_column_count` 改为 `true`，让解析器先产出记录；过滤空白行后，再用表头长度手动校验每条数据行，仍然保留「列数不一致 → `INVALID_CSV`」的行为。
 - 验证方式：`pnpm --filter server test` 中 `csv.test.ts` 29 个测试全部通过；`pnpm test` 共 42 个测试通过。
 - 相关文件：`server/src/qc/csv.ts`、`server/tests/csv.test.ts`
+- 状态：已解决
+
+### P-004 better-sqlite3 下载源超时
+
+- 日期：2026-10-20
+- 阶段：环境 / 依赖安装
+- 问题现象：安装 `better-sqlite3` 时 tarball 下载反复重试，命令超过 180 秒仍未结束。
+- 报错信息：
+
+  ```text
+  [WARN] GET https://registry.npmmirror.com/better-sqlite3/-/better-sqlite3-13.0.3.tgz error (23). Will retry in 10 seconds. 2 retries left.
+  [WARN] GET https://registry.npmmirror.com/better-sqlite3/-/better-sqlite3-13.0.3.tgz error (23). Will retry in 1 minute. 1 retries left.
+  ```
+
+- 根因：当前 pnpm registry 指向 npmmirror，该 tarball 请求失败并进入长重试；不是代码或 Node 版本问题。
+- 解决方案：改用 npm 官方 registry 重新安装：`pnpm --filter server add better-sqlite3 --registry=https://registry.npmjs.org`。随后 node-gyp 在本机完成原生模块编译。
+- 验证方式：安装输出 `Done`；`pnpm test` 中 `persistence.test.ts` 11 个测试通过，`pnpm db:init` 成功创建两张表。
+- 相关文件：`server/package.json`、`pnpm-lock.yaml`、`pnpm-workspace.yaml`
 - 状态：已解决

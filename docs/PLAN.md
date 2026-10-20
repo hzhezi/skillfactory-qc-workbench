@@ -1,8 +1,8 @@
 # SkillFactory Lite — 实施计划书
 
-- 版本：v0.3
+- 版本：v0.4
 - 日期：2026-10-20
-- 状态：**Phase 1 已完成并验证；Phase 2 待开始**
+- 状态：**Phase 2 已完成并验证；Phase 3 待开始**
 - 需求来源：`题目要求.md`
 - 协作规范：`AGENTS.md`
 - 已确认决策：`docs/DECISIONS.md`（D-001 TypeScript、D-002 pnpm、D-003 视觉参考）
@@ -572,7 +572,7 @@ runId: string | null   // 来自 URL query
 **验证结果**
 
 - 2026-10-20 已执行并记录在 `docs/VERIFICATION.md` 的 Phase 0 章节。
-- 遗留问题：根脚本暂未包含 `db:init`，在 Phase 2 实现。
+- 根脚本 `db:init` 已在 Phase 2 补充。
 
 ### Phase 1 — CSV 解析与 QC 核心
 
@@ -598,18 +598,27 @@ runId: string | null   // 来自 URL query
 
 ### Phase 2 — SQLite 持久化
 
-- [ ] 实现连接、PRAGMA、建表、初始化
-- [ ] 实现 `qcRepository.saveReport()` 事务写入
-- [ ] 实现 `qcRepository.getReport(runId)` 按顺序读回
-- [ ] 处理重复 `segment_id`，确保不覆盖
-- [ ] 编写持久化测试：保存后按 runId 读回、Segment 顺序、状态、统计、错误代码
-- [ ] 编写重启测试：关闭连接后用同一文件重新打开，仍能读取
+- [x] 实现连接、PRAGMA、建表、初始化
+- [x] 实现 `qcRepository.saveReport()` 事务写入
+- [x] 实现 `qcRepository.getReport(runId)` 按顺序读回
+- [x] 处理重复 `segment_id`，确保不覆盖
+- [x] 编写持久化测试：保存后按 runId 读回、Segment 顺序、状态、统计、错误代码
+- [x] 编写重启测试：关闭连接后用同一文件重新打开，仍能读取
+- [x] 增加事务回滚测试与 `errors_json` 损坏保护
+- [x] 增加根脚本 `db:init` 与启动时自动建表
 
 **完成标准**
 
 - 持久化测试全部通过
 - 手动检查 `sqlite3 server/data/qc.sqlite ".tables"` 能看到两张表
 - 关闭并重启服务后，旧 `runId` 仍可读取
+
+**验证结果**
+
+- 2026-10-20 已执行：`3 passed (3)`，`53 passed (53)`。
+- `pnpm db:init` 输出 `[db] initialized .../server/data/qc.sqlite`；`.tables` 显示 `qc_runs`、`qc_segments`。
+- 证据与命令见 `docs/VERIFICATION.md` 的 Phase 2 章节。
+- 实际踩坑：`docs/PITFALLS.md` P-004（better-sqlite3 下载源超时）。
 
 ### Phase 3 — HTTP API
 
