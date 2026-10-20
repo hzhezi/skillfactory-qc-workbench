@@ -55,4 +55,15 @@ describe("buildReportCsv", () => {
     expect(csv.startsWith("\uFEFF")).toBe(false);
     expect(csv).toContain('Move, ""cup""');
   });
+
+  it("对可能被 Excel 解释为公式的文本加单引号前缀", () => {
+    const report = makeReport();
+    report.segments[0]!.action = "=HYPERLINK(\"https://example.com\")";
+    report.segments[0]!.segmentId = "@danger";
+
+    const csv = buildReportCsv(report);
+
+    expect(csv).toContain("'@danger");
+    expect(csv).toContain("'=HYPERLINK");
+  });
 });

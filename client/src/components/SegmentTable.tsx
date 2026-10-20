@@ -43,7 +43,7 @@ export function SegmentTable({ segments }: SegmentTableProps) {
               </td>
               <td>
                 <span className="action-text">
-                  {segment.action === "" ? "（空）" : segment.action}
+                  {segment.action.trim() === "" ? "（空）" : segment.action}
                 </span>
               </td>
               <td>

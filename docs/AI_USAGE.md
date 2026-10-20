@@ -18,7 +18,8 @@ AI 生成了：
 - pnpm workspace、React/Vite 与 Express/TypeScript 工程骨架；
 - CSV 解析、QC 规则、SQLite schema/repository、三条 HTTP API；
 - 前端上传、统计、表格、筛选、错误提示、刷新恢复、时间轴、CSV 导出；
-- 服务端与客户端测试、验证文档、README 草稿。
+- 服务端与客户端测试、验证文档、README 草稿；
+- 用户代码审查后，又按 D-004～D-008 做了事务内读回、HTTP 分层、运行时校验、公式注入防护、测试类型检查。
 
 代码不是一次性生成后直接提交：每个阶段都执行了类型检查、构建和测试，并在浏览器中做了手工验收。真实踩坑与解决记录在 `docs/PITFALLS.md`。
 
@@ -28,9 +29,14 @@ AI 生成了：
 
 | 编号 | 决策 | 来源 | 对交付的影响 | 验证 |
 | --- | --- | --- | --- | --- |
-| D-001 | 后端使用 TypeScript | 用户明确确认 AI 建议 | 前后端统一语言与类型检查，降低双技术栈联调成本 | `pnpm typecheck`、70 个测试 |
+| D-001 | 后端使用 TypeScript | 用户明确确认 AI 建议 | 前后端统一语言与类型检查，降低双技术栈联调成本 | `pnpm typecheck`、75 个测试 |
 | D-002 | 包管理器使用 pnpm（替代 npm） | 用户自主提出 | 更严格的依赖隔离、workspace 安装效率；需要 README 说明 pnpm 环境 | 干净副本 `pnpm install --frozen-lockfile` |
 | D-003 | 前端视觉参考 phibotics.cn | 用户自主提出 | 深色技术风格、紫/橙/薄荷绿状态色、时间轴视觉方向；不复制素材 | 浏览器验收、设计 token |
+| D-004 | 事务内读回报告 | 用户自主提出（代码审查） | POST 响应来自 SQLite 读回结果，避免内存对象与数据库漂移 | 持久化/API 测试 |
+| D-005 | 拆分 HTTP 层 | 用户自主提出（代码审查） | service / routes / errorHandler 职责分离 | API 测试、typecheck |
+| D-006 | API 响应运行时校验 | 用户自主提出（代码审查） | 手工类型镜像 + 运行时契约校验 | `apiValidation.test.ts` |
+| D-007 | CSV 导出防公式注入 | 用户自主提出（代码审查） | 危险前缀加 `'` | `csvExport.test.ts` |
+| D-008 | 测试纳入类型检查 | 用户自主提出（代码审查） | tests 也由 `tsc` 检查 | `pnpm typecheck` |
 
 这三项决策分别影响后端工具链、依赖安装方式和视觉语言，属于会被评审直接观察到的工程选择，而不是形式化记录。
 
@@ -58,7 +64,7 @@ pnpm test
 
 - `pnpm typecheck`：client / server 均通过；
 - `pnpm build`：client / server 均通过；
-- `pnpm test`：**70 passed**（server 68，client 2）。
+- `pnpm test`：**75 passed**（server 68，client 7）。
 
 测试覆盖：
 
@@ -67,7 +73,8 @@ pnpm test
 - 持久化：保存/读回、顺序、null 时间、重复 ID、两份报告互不覆盖、关闭重开、事务回滚、错误 JSON 损坏；
 - API：健康检查、示例报告、400/404/500、文件级错误不建报告、数据库写入失败；
 - 重启：真实进程 POST → kill → 重启 → GET，结果一致；
-- 导出：完整报告、CSV 转义、不包含 BOM 的纯函数输出。
+- 导出：完整报告、CSV 转义、公式注入前缀、不包含 BOM 的纯函数输出；
+- API 响应运行时校验：合法报告、未知错误码、统计不一致、非法状态。
 
 ### 4.2 手工验证
 

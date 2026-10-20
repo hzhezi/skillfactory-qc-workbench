@@ -675,9 +675,9 @@ pnpm build
 
 ```text
 $ pnpm test
-client test: 1 passed (1), 2 passed (2)
+client test: 2 passed (2), 7 passed (7)
 server test: 5 passed (5), 68 passed (68)
-合计：70 个测试通过
+合计：75 个测试通过
 ```
 
 浏览器与下载文件实测：
@@ -760,14 +760,14 @@ pnpm build
 pnpm db:init
 
 # 临时端口启动编译后的后端
-PORT=3998 QC_DB_PATH=/tmp/qc-clean-test.sqlite node server/dist/index.js
-curl -s http://127.0.0.1:3998/api/health
+PORT=3997 QC_DB_PATH=/tmp/qc-clean2-test.sqlite node server/dist/index.js
+curl -s http://127.0.0.1:3997/api/health
 ```
 
 ### 预期结果
 
 - 干净副本安装成功，无锁文件漂移；
-- `pnpm test`：70 passed；
+- `pnpm test`：75 passed；
 - `pnpm build`：client / server 均成功；
 - `pnpm db:init`：创建 `server/data/qc.sqlite` 和两张表；
 - 编译后端启动后 health 返回 `{"status":"ok"}`；
@@ -778,29 +778,29 @@ curl -s http://127.0.0.1:3998/api/health
 执行日期：2026-10-20
 
 ```text
-临时目录：/tmp/qc-clean
+临时目录：/tmp/qc-clean2
 $ pnpm install --frozen-lockfile
 Lockfile is up to date, resolution step is skipped
 Packages: +179
 Done
 
 $ pnpm test
-client: 1 file, 2 tests passed
+client: 2 files, 7 tests passed
 server: 5 files, 68 tests passed
-合计 70 passed
+合计 75 passed
 
 $ pnpm build
 server build: Done
 client build: ✓ built in 269ms
 
 $ pnpm db:init
-[db] initialized /private/tmp/qc-clean/server/data/qc.sqlite
+[db] initialized /private/tmp/qc-clean2/server/data/qc.sqlite
 
-$ PORT=3998 QC_DB_PATH=/tmp/qc-clean-test.sqlite node server/dist/index.js
+$ PORT=3997 QC_DB_PATH=/tmp/qc-clean2-test.sqlite node server/dist/index.js
 [server] QC API listening on http://localhost:3998
 [server] SQLite: /tmp/qc-clean-test.sqlite
 
-$ curl -s http://127.0.0.1:3998/api/health
+$ curl -s http://127.0.0.1:3997/api/health
 {"status":"ok"}
 ```
 
@@ -823,7 +823,7 @@ T14 为浏览器手工验收；其余场景均有自动化测试或 curl/进程�
 ### 自己检查时重点看什么
 
 1. 按 README 从零执行，而不是跳过 `pnpm db:init` 或手工改端口。
-2. 干净副本中 `pnpm test` 是否仍为 70 passed。
+2. 干净副本中 `pnpm test` 是否仍为 75 passed。
 3. `pnpm build` 是否同时生成前后端产物。
 4. 编译后的后端能否用临时 DB 启动并返回 health。
 5. README 的 T01–T15 是否与 `docs/VERIFICATION.md` 的证据一致。
@@ -835,3 +835,35 @@ T14 为浏览器手工验收；其余场景均有自动化测试或 curl/进程�
 - 无自动化浏览器 E2E；T14 手工验收。
 - 重叠检查 O(n²)，面向 ≤100 条记录。
 - 未公开边界口径按计划书 6.2 / 6.3 实现。
+
+## 代码审查后的加固（v1.1）
+
+这一节记录用户代码审查后提出的问题，以及最终处理。新增决策见 `docs/DECISIONS.md` D-004～D-008。
+
+| 审查项 | 处理 | 验证 |
+| --- | --- | --- |
+| `saveReport()` 返回内存对象 | 改为事务内 write → read back → commit，POST 响应来自 SQLite 读回结果 | `persistence.test.ts`、`api.test.ts` |
+| `app.ts` 承担过多职责 | 拆出 `qc/service.ts`、`http/routes.ts`、`http/errorHandler.ts`；`app.ts` 只组合 | 14 个 API 测试、`pnpm typecheck` |
+| 前后端类型手工重复 | 保留手工类型镜像；在 `client/src/api/qc.ts` 增加运行时解析与校验 | `apiValidation.test.ts` 4 个测试 |
+| CSV 导出公式注入 | 对以 `= + - @ \t \r` 开头的字符串加 `'` 前缀；数值不处理 | `csvExport.test.ts` 3 个测试 |
+| 测试不在 `tsc` 范围 | 新增 `server/tsconfig.test.json`、`client/tsconfig.test.json`，纳入 `pnpm typecheck` | `pnpm typecheck` 同时检查 src + tests |
+| 空白 action 显示 | 表格用 `trim()` 判断显示「（空）」，导出仍用原文 | 代码审查 + 规则测试 |
+| 客户端校验失败清空旧报告 | 保留该行为：旧报告和 URL 先清空，避免冒充新结果 | 浏览器手工验收 |
+| memoryStorage 无大小限制 | 保留为本地工具范围；题目限定 ≤100 条，README 记录公网部署需加 limits | README 已知限制 |
+
+验证结果：
+
+```text
+pnpm typecheck
+client: Done (src + tests)
+server: Done (src + tests)
+
+pnpm test
+client: 2 passed (2), 7 passed (7)
+server: 5 passed (5), 68 passed (68)
+合计：75 passed
+
+干净副本：pnpm install --frozen-lockfile → typecheck → test → build → db:init 全部通过
+编译后后端：PORT=3997 QC_DB_PATH=/tmp/qc-clean2-test.sqlite node server/dist/index.js
+GET /api/health -> {"status":"ok"}
+```

@@ -34,7 +34,8 @@ interface SegmentRow {
  * QC 报告读写。
  *
  * 持久化边界：
- * - saveReport 在一个事务内写入报告和全部 Segment，全部成功后才返回；
+ * - saveReport 在一个事务内写入报告和全部 Segment；
+ * - 写完后再在同一个事务内读回，返回值来自 SQLite 而不是内存对象；
  * - 中途失败（例如 row_index 冲突）会回滚，不留下半份报告；
  * - getReport 从数据库还原，不依赖内存缓存。
  */
@@ -59,8 +60,8 @@ export class QcRepository {
     `);
 
     // better-sqlite3 的 transaction 在回调抛错时自动 ROLLBACK。
-    // 不要在这里手动 BEGIN/COMMIT，避免异常路径留下未关闭的事务。
-    const writeAll = this.db.transaction((current: QcEvaluation) => {
+    // 事务回调返回读回的报告；只有事务提交成功后，saveReport 才把结果交给 API 层。
+    const writeAndRead = this.db.transaction((current: QcEvaluation) => {
       insertRun.run(
         runId,
         current.durationMs,
@@ -82,22 +83,25 @@ export class QcRepository {
           JSON.stringify(segment.errors),
         );
       }
+
+      // 在事务内读回，确保 POST 响应与 GET 读取到的是同一份数据库数据。
+      const stored = this.readReport(runId);
+
+      if (stored === null) {
+        throw new Error("Saved QC report could not be read back");
+      }
+
+      return stored;
     });
 
-    writeAll(evaluation);
-
-    return {
-      runId,
-      createdAt,
-      durationMs: evaluation.durationMs,
-      total: evaluation.total,
-      valid: evaluation.valid,
-      invalid: evaluation.invalid,
-      segments: evaluation.segments,
-    };
+    return writeAndRead(evaluation);
   }
 
   getReport(runId: string): QcReport | null {
+    return this.readReport(runId);
+  }
+
+  private readReport(runId: string): QcReport | null {
     const run = this.db
       .prepare(
         `SELECT id, duration_ms, total, valid, invalid, created_at

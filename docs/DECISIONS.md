@@ -16,9 +16,14 @@
 
 | 编号 | 决策主题 | 来源 | 对交付的实际影响 | 验证 |
 | --- | --- | --- | --- | --- |
-| D-001 | 后端使用 TypeScript | 用户明确确认 AI 建议 | 前后端统一语言与类型检查，减少双技术栈联调成本 | `pnpm typecheck`、70 个测试 |
+| D-001 | 后端使用 TypeScript | 用户明确确认 AI 建议 | 前后端统一语言与类型检查，减少双技术栈联调成本 | `pnpm typecheck`、75 个测试 |
 | D-002 | 包管理器改用 pnpm | 用户自主提出 | 获得更严格的依赖隔离和 workspace 安装效率；README 明确 pnpm 环境 | 干净副本 `pnpm install --frozen-lockfile` |
 | D-003 | 前端视觉参考 phibotics.cn | 用户自主提出 | 形成深色技术风格、紫/橙/薄荷绿状态色与时间轴视觉方向 | 浏览器验收、设计 token、未复制素材 |
+| D-004 | 事务内写完后读回报告 | 用户自主提出（代码审查） | POST 响应来自 SQLite 读回结果，避免内存对象与数据库漂移 | 持久化/API 测试、75 个测试 |
+| D-005 | 拆分 HTTP 层 | 用户自主提出（代码审查） | `qc/service.ts`、`http/routes.ts`、`http/errorHandler.ts` 落地，职责单一 | API 测试、`pnpm typecheck` |
+| D-006 | API 响应运行时校验 | 用户自主提出（代码审查） | 保留手工类型镜像，增加运行时契约校验，降低字段漂移风险 | `apiValidation.test.ts` 4 个测试 |
+| D-007 | CSV 导出防公式注入 | 用户自主提出（代码审查） | 以 `= + - @` 开头的文本加 `'` 前缀，降低 Excel 公式执行风险 | `csvExport.test.ts` 3 个测试 |
+| D-008 | 测试纳入类型检查 | 用户自主提出（代码审查） | 新增 `tsconfig.test.json`，`pnpm typecheck` 同时检查测试代码 | `pnpm typecheck`、75 个测试 |
 
 ## D-001 后端语言：TypeScript
 
@@ -41,7 +46,7 @@
 ### 验证与证据
 
 - `pnpm typecheck`：client / server 均通过。
-- `pnpm test`：70 个测试通过，包含 API 契约与数据库读写。
+- `pnpm test`：75 个测试通过，包含 API 契约与数据库读写。
 - `server/src/**/*.ts`、`server/tsconfig.json`。
 - 记录位置：`docs/VERIFICATION.md` Phase 1–3。
 
@@ -66,7 +71,7 @@
 ### 验证与证据
 
 - `pnpm install --frozen-lockfile`：干净副本安装成功。
-- `pnpm test`：70 passed。
+- `pnpm test`：75 passed。
 - `pnpm-lock.yaml`、`pnpm-workspace.yaml`、根 `package.json`。
 - 记录位置：`docs/VERIFICATION.md` Phase 7 的干净副本验证。
 
@@ -95,6 +100,65 @@
 - 未引入 phibotics.cn 的静态资源或字体文件。
 - 记录位置：`docs/VERIFICATION.md` Phase 4–7。
 
+## D-004 事务内读回报告后再返回
+
+- 日期：2026-10-20
+- 决策来源：用户自主提出（代码审查）
+- 背景：原 `saveReport()` 写入事务后直接返回内存对象；POST/GET 当前一致，但后端演进时可能出现漂移。
+- 用户选择：在事务内完成 write → read back，再提交事务并返回读回结果。
+- 用户理由：POST 响应应与 GET 使用同一条数据库读取路径，避免内存对象与 SQLite 不一致。
+- 验证方式：`persistence.test.ts` 保存/读回、事务回滚测试；`api.test.ts` POST/GET 一致性；`pnpm test` 75 passed。
+- 相关文件：`server/src/db/qcRepository.ts`
+- 状态：已完成
+
+## D-005 拆分 HTTP 层
+
+- 日期：2026-10-20
+- 决策来源：用户自主提出（代码审查）
+- 背景：原 `app.ts` 同时承担路由、校验、编排与错误映射；计划书中的 `qc/service.ts`、`http/routes.ts`、`http/errorHandler.ts` 没有落地。
+- 用户选择：按计划拆分：
+  - `qc/service.ts`：解析 → 规则 → 保存；
+  - `http/routes.ts`：multipart 与路由；
+  - `http/errorHandler.ts`：400/404/500 映射；
+  - `app.ts`：只组合 router 与 error handler。
+- 用户理由：职责单一，便于后续扩展和测试。
+- 验证方式：`api.test.ts` 14 个 API 测试、`pnpm typecheck`、75 个测试通过。
+- 相关文件：`server/src/app.ts`、`server/src/http/`、`server/src/qc/service.ts`
+- 状态：已完成
+
+## D-006 API 响应运行时校验
+
+- 日期：2026-10-20
+- 决策来源：用户自主提出（代码审查）
+- 背景：前后端类型是手工镜像；API 客户端原来直接 `as T`，新增字段或错误码时容易漂移。
+- 用户选择：保留手工类型镜像（避免为小项目引入共享包的构建复杂度），在 `client/src/api/qc.ts` 增加运行时解析与校验。
+- 用户理由：类型错误应在边界处立即暴露，而不是带着错误数据渲染。
+- 验证方式：`client/tests/apiValidation.test.ts` 覆盖合法报告、未知错误码、统计不一致、非法状态；`pnpm typecheck` 通过。
+- 相关文件：`client/src/api/qc.ts`、`client/src/types/qc.ts`
+- 状态：已完成
+
+## D-007 CSV 导出防公式注入
+
+- 日期：2026-10-20
+- 决策来源：用户自主提出（代码审查）
+- 背景：`action`、`segmentId` 等文本若以 `= + - @` 开头，Excel 可能当作公式执行。
+- 用户选择：导出时对以 `= + - @ \t \r` 开头的字符串加 `'` 前缀；数值字段不处理。
+- 用户理由：本地单用户工具风险低，但加固成本很小，值得做。
+- 验证方式：`client/tests/csvExport.test.ts` 新增公式注入用例；`pnpm test` 通过。
+- 相关文件：`client/src/utils/csvExport.ts`
+- 状态：已完成
+
+## D-008 测试纳入类型检查
+
+- 日期：2026-10-20
+- 决策来源：用户自主提出（代码审查）
+- 背景：测试原先只由 Vitest 转译，不在 `tsc` 检查范围。
+- 用户选择：新增 `server/tsconfig.test.json` 与 `client/tsconfig.test.json`，把 `tests/` 纳入 `pnpm typecheck`。
+- 用户理由：测试代码也需要类型保护，避免测试本身悄悄失效。
+- 验证方式：`pnpm typecheck` 同时检查 src 与 tests；75 个测试通过。
+- 相关文件：`server/tsconfig.test.json`、`client/tsconfig.test.json`、两个 `package.json`
+- 状态：已完成
+
 ## 其他用户输入（非架构决策）
 
 以下内容由用户提出并已落实，但属于流程、质量或 UI 偏好，不冒充技术架构决策：
@@ -104,6 +168,9 @@
 - 要求记录关键决策、踩坑与 AI 使用说明；见本文件、`docs/PITFALLS.md`、`docs/AI_USAGE.md`。
 - 要求不使用 Docker；README 明确本地 Node + SQLite 运行。
 - 要求移除右上角 API 健康状态徽章；已移除前端展示，`GET /api/health` 接口仍保留用于契约和运维检查。
+- 指出空白动作应显示为「（空）」；表格现在用 `trim()` 判断显示，但导出和规则判断仍使用原始字符串。
+- 确认客户端校验失败时清空旧报告和 URL 是有意的产品行为，用于避免旧结果冒充新结果。
+- 本地工具不设置上传大小上限，题目限定 ≤100 条；公网部署时需要另加 `multer` limits。
 
 ## AI 默认实现（非用户决策）
 

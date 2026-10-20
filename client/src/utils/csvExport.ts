@@ -62,7 +62,13 @@ function escapeCsvField(value: string | number | null): string {
     return "";
   }
 
-  const text = String(value);
+  let text = String(value);
+
+  // 防 CSV/Excel 公式注入：文本以 =、+、-、@ 开头时，Excel 可能把它当公式。
+  // 只在字符串字段前加单引号；数值字段（rowIndex/startMs/endMs）不处理。
+  if (typeof value === "string" && /^[=+\-@\t\r]/.test(text)) {
+    text = `'${text}`;
+  }
 
   if (/[",\r\n]/.test(text)) {
     return `"${text.replace(/"/g, '""')}"`;

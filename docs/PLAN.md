@@ -1,8 +1,8 @@
 # SkillFactory Lite — 实施计划书
 
-- 版本：v1.0
+- 版本：v1.1
 - 日期：2026-10-20
-- 状态：**Phase 7 已完成；项目交付**
+- 状态：**Phase 7 已完成；代码审查加固完成**
 - 需求来源：`题目要求.md`
 - 协作规范：`AGENTS.md`
 - 已确认决策：`docs/DECISIONS.md`（D-001 TypeScript、D-002 pnpm、D-003 视觉参考）
@@ -709,7 +709,7 @@ runId: string | null   // 来自 URL query
 
 - 时间轴：s1/s6 薄荷绿，s2/s3/s4/s5 橙色；s4 超出 10000ms 的右端被截断并标记。
 - CSV 导出：切到 Invalid 筛选后导出，文件仍包含 6 条 Segment；带 UTF-8 BOM。
-- 测试：server 68 + client 2 = 70 个测试通过。
+- 测试：server 68 + client 7 = 75 个测试通过。
 - B03 覆盖见 `docs/VERIFICATION.md` Phase 6 的测试映射。
 
 ### Phase 7 — 文档与最终验收
@@ -863,7 +863,7 @@ runId: string | null   // 来自 URL query
 
 计划阶段列出的技术候选，最终处理如下：
 
-- **用户明确决策**：D-001 TypeScript、D-002 pnpm、D-003 视觉参考。
+- **用户明确决策**：D-001 TypeScript、D-002 pnpm、D-003 视觉参考，以及代码审查后的 D-004～D-008。
 - **其余事项**：由 AI 默认实现并通过测试，属于实现选择，不写入用户决策记录。
 
 | 事项 | 最终处理 | 状态 |
@@ -881,7 +881,7 @@ runId: string | null   // 来自 URL query
 | 边界口径 | 第 6.2 / 6.3 节 | 已实现并测试 |
 | 设计主张 | 第 13.2 节 | 已落地 |
 
-详细区分见 `docs/DECISIONS.md`：D-001～D-003 是用户决策，其余是 AI 默认实现。
+详细区分见 `docs/DECISIONS.md`：D-001～D-008 是用户决策或用户提出的审查改进，其余是 AI 默认实现。
 
 ## 16. 计划变更记录
 
@@ -897,6 +897,7 @@ runId: string | null   // 来自 URL query
 | 2026-10-20 | v0.7：Phase 5 完成 | URL runId、刷新 GET、404、失败清空旧结果、竞态保护 |
 | 2026-10-20 | v0.8：Phase 6 完成 | 时间轴、CSV 导出、B03 边界测试 |
 | 2026-10-20 | v1.0：Phase 7 完成 | README、AI_USAGE、T01–T15、干净环境复现 |
+| 2026-10-20 | v1.1：代码审查加固 | 事务内读回、HTTP 分层、运行时校验、公式注入、测试类型检查 |
 
 ## 17. 评分标准对照（交付前自检）
 
@@ -908,7 +909,7 @@ runId: string | null   // 来自 URL query
 | SQLite 数据持久化 | 15 | 两张表、事务、读回、关闭重开、真实进程重启、写入失败 500 | 已完成 | 真实重启已通过 |
 | CSV 解析与 API 契约 | 15 | CSV 29 个测试；三条固定接口；400/404/500；输入顺序 | 已完成 | curl 与测试已记录 |
 | React 前端功能 | 15 | 上传、Loading、统计、表格、筛选、错误、URL 刷新恢复、竞态保护、时间轴 | 已完成 | T14 已验收 |
-| 自动化测试 | 10 | 70 个测试通过（server 68 + client 2） | 已超过要求 | README 命令已运行 |
+| 自动化测试 | 10 | 75 个测试通过（server 68 + client 7） | 已超过要求 | README 命令已运行 |
 | 可运行性与代码质量 | 5 | workspace、typecheck、build、干净副本安装/启动通过 | 已完成 | 干净副本已通过 |
 | AI 使用说明与交付 | 10 | DECISIONS、PITFALLS、VERIFICATION、AI_USAGE、README、T01–T15 | 已完成 | 无 |
 | 加分项 | 5 | B01 时间轴、B02 CSV 导出、B03 额外测试 | 已完成 | 已手工复验 |

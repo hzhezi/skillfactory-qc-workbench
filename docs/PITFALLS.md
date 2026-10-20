@@ -38,6 +38,7 @@
 | P-004 | 2026-10-20 | 环境 / 依赖安装 | 安装 `better-sqlite3` 时 tarball 下载卡住，命令超时 | 当前 registry 为 npmmirror，`better-sqlite3-13.0.3.tgz` 请求报错并反复重试 | 使用 `--registry=https://registry.npmjs.org` 重新安装；原生模块通过 node-gyp 编译成功 | `pnpm --filter server add better-sqlite3 --registry=...` 成功；持久化测试 11 个通过 | 已解决 |
 | P-005 | 2026-10-20 | API / 模块解析 | API 测试与类型检查无法加载 `app.ts` 的依赖 | `app.ts` 位于 `src/` 根目录，却写成 `../qc/csv`、`../db/...`，实际应使用 `./qc/...`、`./db/...` | 修正相对导入路径 | `pnpm typecheck` 通过；`pnpm test` 68 个测试通过 | 已解决 |
 | P-006 | 2026-10-20 | 前端 / 本地联调 | 浏览器访问 `127.0.0.1:5173` 被拒绝，但 Vite 进程存在 | Vite 默认监听 `localhost`，本机解析为 IPv6 `[::1]`，未监听 IPv4 `127.0.0.1` | 使用 `http://localhost:5173` 访问；README 统一写 localhost | 浏览器成功加载页面并显示上传表单 | 已解决 |
+| P-007 | 2026-10-20 | API / 类型检查 | 拆分路由后 `tsc` 报 `req.params.runId` 不能传给 `getReport(string)` | Express 5 类型把 params 值定义为 `string | string[]` | 用 `Array.isArray` 取第一个值，再传给 repository | `pnpm typecheck` 通过；75 个测试通过 | 已解决 |
 
 ### P-001 pnpm 11 忽略 esbuild 安装脚本
 
@@ -145,4 +146,21 @@
 - 解决方案：统一使用 `http://localhost:5173`；如果必须用 127.0.0.1，可给 Vite 加 `--host 127.0.0.1`。README 采用 localhost。
 - 验证方式：浏览器打开 `http://localhost:5173` 成功加载，并显示上传表单。
 - 相关文件：`README.md`（启动地址）、`client/vite.config.ts`
+- 状态：已解决
+
+### P-007 Express 5 params 类型是 string | string[]
+
+- 日期：2026-10-20
+- 阶段：API / 类型检查
+- 问题现象：把路由拆到 `http/routes.ts` 后，TypeScript 报错，`repo.getReport(runId)` 参数类型不匹配。
+- 报错信息：
+
+  ```text
+  src/http/routes.ts(75,37): error TS2345: Argument of type 'string | string[]' is not assignable to parameter of type 'string'.
+  ```
+
+- 根因：Express 5 的 `req.params` 值类型为 `string | string[]`；旧 `app.ts` 中同样代码没有显式暴露这个类型问题。
+- 解决方案：先将 `req.params.runId` 归一化为单个字符串：数组取第一个，再判断空值并传给 repository。
+- 验证方式：`pnpm typecheck` 通过；server 68 + client 7 = 75 个测试通过。
+- 相关文件：`server/src/http/routes.ts`
 - 状态：已解决

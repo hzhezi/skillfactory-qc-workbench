@@ -1,9 +1,21 @@
-import type { QcReport } from "../types/qc";
+import type {
+  QcErrorCode,
+  QcReport,
+  QcSegment,
+  SegmentStatus,
+} from "../types/qc";
 
 interface ApiErrorBody {
   code?: unknown;
   error?: unknown;
 }
+
+const QC_ERROR_CODES = new Set<string>([
+  "INVALID_RANGE",
+  "OUT_OF_BOUNDS",
+  "EMPTY_ACTION",
+  "OVERLAP",
+]);
 
 /**
  * 前端统一错误类型。
@@ -22,7 +34,7 @@ export class ApiError extends Error {
   }
 }
 
-export function createQcReport(
+export async function createQcReport(
   file: File,
   durationMs: number,
   signal?: AbortSignal,
@@ -31,20 +43,59 @@ export function createQcReport(
   form.set("file", file);
   form.set("durationMs", String(durationMs));
 
-  return requestJson<QcReport>("/api/qc", {
+  const payload = await requestJson<unknown>("/api/qc", {
     method: "POST",
     body: form,
     signal,
   });
+
+  return parseQcReport(payload);
 }
 
-export function getQcReport(
+export async function getQcReport(
   runId: string,
   signal?: AbortSignal,
 ): Promise<QcReport> {
-  return requestJson<QcReport>(`/api/qc/${encodeURIComponent(runId)}`, {
-    signal,
-  });
+  const payload = await requestJson<unknown>(
+    `/api/qc/${encodeURIComponent(runId)}`,
+    { signal },
+  );
+
+  return parseQcReport(payload);
+}
+
+/**
+ * 运行时校验服务端响应。
+ *
+ * 前后端类型是手工镜像的；如果后端新增错误码或改字段，这里会立即失败，
+ * 而不是把错误数据当成 QcReport 继续渲染。
+ */
+export function parseQcReport(value: unknown): QcReport {
+  const record = asRecord(value);
+
+  if (!Array.isArray(record.segments)) {
+    throw invalidResponse();
+  }
+
+  const segments = record.segments.map(parseSegment);
+  const report: QcReport = {
+    runId: requireNonEmptyString(record.runId, "runId"),
+    createdAt: requireNonEmptyString(record.createdAt, "createdAt"),
+    durationMs: requirePositiveInteger(record.durationMs, "durationMs"),
+    total: requireNonNegativeInteger(record.total, "total"),
+    valid: requireNonNegativeInteger(record.valid, "valid"),
+    invalid: requireNonNegativeInteger(record.invalid, "invalid"),
+    segments,
+  };
+
+  if (
+    report.total !== segments.length ||
+    report.valid + report.invalid !== report.total
+  ) {
+    throw invalidResponse();
+  }
+
+  return report;
 }
 
 async function requestJson<T>(
@@ -102,4 +153,113 @@ async function readApiError(response: Response): Promise<ApiError> {
   }
 
   return new ApiError(code, message, response.status);
+}
+
+function parseSegment(value: unknown): QcSegment {
+  const record = asRecord(value);
+
+  return {
+    rowIndex: requirePositiveInteger(record.rowIndex, "rowIndex"),
+    segmentId: requireString(record.segmentId, "segmentId"),
+    startMs: requireNullableInteger(record.startMs, "startMs"),
+    endMs: requireNullableInteger(record.endMs, "endMs"),
+    action: requireString(record.action, "action"),
+    status: parseStatus(record.status),
+    errors: parseErrors(record.errors),
+  };
+}
+
+function asRecord(value: unknown): Record<string, unknown> {
+  if (typeof value !== "object" || value === null || Array.isArray(value)) {
+    throw invalidResponse();
+  }
+
+  return value as Record<string, unknown>;
+}
+
+function requireString(value: unknown, field: string): string {
+  if (typeof value !== "string") {
+    throw invalidResponse(field);
+  }
+
+  return value;
+}
+
+function requireNonEmptyString(value: unknown, field: string): string {
+  const text = requireString(value, field);
+
+  if (text === "") {
+    throw invalidResponse(field);
+  }
+
+  return text;
+}
+
+function requirePositiveInteger(value: unknown, field: string): number {
+  if (
+    typeof value !== "number" ||
+    !Number.isSafeInteger(value) ||
+    value <= 0
+  ) {
+    throw invalidResponse(field);
+  }
+
+  return value;
+}
+
+function requireNonNegativeInteger(value: unknown, field: string): number {
+  if (
+    typeof value !== "number" ||
+    !Number.isSafeInteger(value) ||
+    value < 0
+  ) {
+    throw invalidResponse(field);
+  }
+
+  return value;
+}
+
+function requireNullableInteger(
+  value: unknown,
+  field: string,
+): number | null {
+  if (value === null) {
+    return null;
+  }
+
+  if (typeof value !== "number" || !Number.isSafeInteger(value)) {
+    throw invalidResponse(field);
+  }
+
+  return value;
+}
+
+function parseStatus(value: unknown): SegmentStatus {
+  if (value !== "VALID" && value !== "INVALID") {
+    throw invalidResponse("status");
+  }
+
+  return value;
+}
+
+function parseErrors(value: unknown): QcErrorCode[] {
+  if (
+    !Array.isArray(value) ||
+    !value.every(
+      (item) => typeof item === "string" && QC_ERROR_CODES.has(item),
+    )
+  ) {
+    throw invalidResponse("errors");
+  }
+
+  return value as QcErrorCode[];
+}
+
+function invalidResponse(field?: string): ApiError {
+  const suffix = field === undefined ? "" : `（字段：${field}）`;
+  return new ApiError(
+    "INVALID_RESPONSE",
+    `服务器返回了不符合契约的报告${suffix}。`,
+    200,
+  );
 }

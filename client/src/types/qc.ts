@@ -1,3 +1,9 @@
+/**
+ * 客户端 API 类型。
+ *
+ * 与 server/src/qc/types.ts 手工镜像：前后端构建目标不同，当前没有引入共享包。
+ * 为了避免字段漂移，api/qc.ts 会对服务端响应做运行时校验。
+ */
 export type QcErrorCode =
   | "INVALID_RANGE"
   | "OUT_OF_BOUNDS"

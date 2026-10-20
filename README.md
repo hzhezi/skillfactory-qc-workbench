@@ -128,10 +128,12 @@ pnpm typecheck
 pnpm build
 ```
 
+`pnpm typecheck` 同时检查 `src` 与 `tests`（使用 `tsconfig.test.json`）。
+
 当前结果：
 
-- 测试文件：server 5 个 + client 1 个；
-- 测试用例：**70 passed**（server 68，client 2）。
+- 测试文件：server 5 个 + client 2 个；
+- 测试用例：**75 passed**（server 68，client 7）。
 
 单独运行：
 
@@ -228,7 +230,7 @@ curl -i http://localhost:3001/api/qc/<runId>
 - 成功后把 `runId` 写入 URL query，刷新时调用 `GET /api/qc/{runId}`；
 - 新请求开始时清空旧报告；失败时不会显示上一份结果；
 - B01 时间轴按比例展示片段位置，有效/无效用颜色区分，越界片段截断标记；
-- B02 导出完整报告 CSV，不受筛选影响，带 UTF-8 BOM。
+- B02 导出完整报告 CSV，不受筛选影响，带 UTF-8 BOM；对以 `= + - @` 开头的文本加 `'` 前缀，降低 Excel 公式注入风险。
 
 ## 验收清单（T01–T15）
 
@@ -250,7 +252,7 @@ curl -i http://localhost:3001/api/qc/<runId>
 | T12 | 真实进程重启后仍能读取 | ✅ | `restart.test.ts`（spawn → kill → restart） |
 | T13 | 连续两份报告互不覆盖 | ✅ | `api.test.ts`、`persistence.test.ts` |
 | T14 | 前端检查、筛选、刷新恢复 | ✅ | 浏览器手工验收；刷新 Network 出现 `GET /api/qc/{runId}` 200 |
-| T15 | README 测试命令可运行 | ✅ | `pnpm test`：70 passed |
+| T15 | README 测试命令可运行 | ✅ | `pnpm test`：75 passed |
 
 ## 加分项
 
@@ -271,11 +273,16 @@ curl -i http://localhost:3001/api/qc/<runId>
 | D-001 后端使用 TypeScript | 用户确认候选方案 | 前后端统一语言与类型检查，降低双技术栈联调成本 |
 | D-002 包管理器改用 pnpm | 用户自主提出 | 严格依赖隔离 + workspace 安装效率；README 明确 pnpm 环境 |
 | D-003 视觉参考 `phibotics.cn` | 用户自主提出 | 形成深色技术风格、紫/橙/薄荷绿状态色与时间轴视觉方向；未复制素材 |
+| D-004 事务内读回报告 | 用户自主提出（代码审查） | POST 响应来自 SQLite 读回结果，避免内存对象与数据库漂移 |
+| D-005 拆分 HTTP 层 | 用户自主提出（代码审查） | service / routes / errorHandler 职责分离，计划书结构落地 |
+| D-006 API 响应运行时校验 | 用户自主提出（代码审查） | 手工类型镜像 + 运行时契约校验，降低字段漂移风险 |
+| D-007 CSV 导出防公式注入 | 用户自主提出（代码审查） | 危险前缀加 `'`，降低 Excel 公式执行风险 |
+| D-008 测试纳入类型检查 | 用户自主提出（代码审查） | 测试代码也由 `pnpm typecheck` 检查 |
 
 这三项决策分别约束了后端工具链、依赖安装方式和视觉语言，不是装饰性选择。
 - 正确性如何检查：
   - `pnpm typecheck`、`pnpm build`；
-  - `pnpm test`：70 个测试，含 QC 规则、持久化、API 契约、真实进程重启；
+  - `pnpm test`：75 个测试，含 QC 规则、持久化、API 契约、真实进程重启；
   - curl 手工验证 POST / GET / 404 / 400；
   - 浏览器上传示例 CSV、切换筛选、刷新页面并检查 Network 的 `GET /api/qc/{runId}`；
   - 导出 CSV 后检查 BOM、行数与转义。
@@ -294,9 +301,9 @@ curl -i http://localhost:3001/api/qc/<runId>
 │   ├── src/types/          # API 类型
 │   └── src/utils/          # 格式化与 CSV 导出
 ├── server/                 # Express + TypeScript
-│   ├── src/qc/             # CSV 解析、QC 规则、类型、错误码
+│   ├── src/qc/             # CSV 解析、QC 规则、service、类型、错误码
 │   ├── src/db/             # SQLite schema、连接、repository、init
-│   ├── src/http 相关       # app.ts 路由与错误处理
+│   ├── src/http/           # routes、errorHandler
 │   └── tests/              # 规则、CSV、持久化、API、重启测试
 ├── docs/
 │   ├── PLAN.md             # 计划书与边界口径
@@ -312,13 +319,15 @@ curl -i http://localhost:3001/api/qc/<runId>
 
 已完成：
 
-- 必做：CSV 解析、四条 QC 规则、SQLite 持久化、三条固定 API、React 页面、All/Valid/Invalid 筛选、刷新恢复、70 个自动化测试；
+- 必做：CSV 解析、四条 QC 规则、SQLite 持久化、三条固定 API、React 页面、All/Valid/Invalid 筛选、刷新恢复、75 个自动化测试；
 - 加分：B01 时间轴、B02 CSV 导出、B03 额外边界测试。
 
 已知限制：
 
 - 不做登录、权限、视频播放/解码、报告历史列表、编辑/删除、分页。
 - 重叠检查为 O(n²)，面向题目限定的 ≤100 条记录；不承诺大文件性能。
+- 本地上传未设置文件大小上限；题目限定 ≤100 条，公网部署时应另加 `multer` limits。
+- 前后端 API 类型是手工镜像（没有引入共享包）；客户端增加了运行时响应校验，字段漂移时会在页面报 `INVALID_RESPONSE`。
 - 没有自动化浏览器 E2E；T14 为手工验收，但已记录 Network 请求证据。
 - 使用 `history.replaceState`，浏览器后退不会回到上一份报告。
 - 404 的 `runId` 会保留在 URL 中，刷新仍显示 404；这是为了保留可复现链接。
