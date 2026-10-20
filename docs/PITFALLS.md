@@ -36,6 +36,7 @@
 | P-002 | 2026-10-20 | 类型检查 / 构建 | server 的 `tsc` 报 `TS5108`，无法识别 `moduleResolution=node10` | 安装到 TypeScript 7.0.2，该版本移除了旧的 `node10` resolution | 将 `server/tsconfig.json` 改为 `module: Node16` + `moduleResolution: Node16` | `pnpm typecheck`、`pnpm build` 均通过 | 已解决 |
 | P-003 | 2026-10-20 | CSV 解析 | 前导空白行导致合法表头被误判为 `INVALID_CSV` | `csv-parse` 在 `relax_column_count: false` 时把首条空白记录当成列数基准 | 改为 `relax_column_count: true`，过滤空白行后手动校验数据行列数 | `pnpm test` 42 个测试全部通过 | 已解决 |
 | P-004 | 2026-10-20 | 环境 / 依赖安装 | 安装 `better-sqlite3` 时 tarball 下载卡住，命令超时 | 当前 registry 为 npmmirror，`better-sqlite3-13.0.3.tgz` 请求报错并反复重试 | 使用 `--registry=https://registry.npmjs.org` 重新安装；原生模块通过 node-gyp 编译成功 | `pnpm --filter server add better-sqlite3 --registry=...` 成功；持久化测试 11 个通过 | 已解决 |
+| P-005 | 2026-10-20 | API / 模块解析 | API 测试与类型检查无法加载 `app.ts` 的依赖 | `app.ts` 位于 `src/` 根目录，却写成 `../qc/csv`、`../db/...`，实际应使用 `./qc/...`、`./db/...` | 修正相对导入路径 | `pnpm typecheck` 通过；`pnpm test` 68 个测试通过 | 已解决 |
 
 ### P-001 pnpm 11 忽略 esbuild 安装脚本
 
@@ -106,4 +107,24 @@
 - 解决方案：改用 npm 官方 registry 重新安装：`pnpm --filter server add better-sqlite3 --registry=https://registry.npmjs.org`。随后 node-gyp 在本机完成原生模块编译。
 - 验证方式：安装输出 `Done`；`pnpm test` 中 `persistence.test.ts` 11 个测试通过，`pnpm db:init` 成功创建两张表。
 - 相关文件：`server/package.json`、`pnpm-lock.yaml`、`pnpm-workspace.yaml`
+- 状态：已解决
+
+### P-005 app.ts 相对导入路径写错
+
+- 日期：2026-10-20
+- 阶段：API / 模块解析
+- 问题现象：新增 HTTP 路由后，API 测试无法加载模块，restart 测试启动的后端进程也立即退出。
+- 报错信息：
+
+  ```text
+  Error: Cannot find module '../qc/csv'
+  Require stack:
+  - server/src/app.ts
+  - server/src/index.ts
+  ```
+
+- 根因：`app.ts` 位于 `server/src/`，`qc/` 和 `db/` 是它的同级目录；错误地写成了上一级路径 `../qc/csv`、`../db/qcRepository`。
+- 解决方案：改为 `./qc/csv`、`./qc/errorCodes`、`./qc/rules`、`./db/qcRepository`。
+- 验证方式：`pnpm typecheck` 通过；`pnpm test` 中 5 个测试文件、68 个测试全部通过，包含真实进程重启测试。
+- 相关文件：`server/src/app.ts`
 - 状态：已解决

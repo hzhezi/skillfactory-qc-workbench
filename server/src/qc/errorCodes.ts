@@ -28,6 +28,14 @@ export const FILE_ERROR_CODES = [
 
 export type FileErrorCode = (typeof FILE_ERROR_CODES)[number];
 
+/**
+ * HTTP 层额外错误码。
+ * 它们不是 CSV 输入错误，因此单独定义，避免和 400 业务码混淆。
+ */
+export const API_ERROR_CODES = ["REPORT_NOT_FOUND", "INTERNAL_ERROR"] as const;
+
+export type ApiErrorCode = (typeof API_ERROR_CODES)[number];
+
 export const ERROR_ORDER: Record<QcErrorCode, number> = {
   INVALID_RANGE: 0,
   OUT_OF_BOUNDS: 1,

@@ -1,6 +1,7 @@
 import { createApp } from "./app";
 import { getDbPath } from "./config";
 import { openDatabase } from "./db/connection";
+import { QcRepository } from "./db/qcRepository";
 
 // 端口允许用环境变量覆盖，方便端口冲突时调整。
 // 默认值与 README 中记录的后端地址保持一致。
@@ -15,7 +16,8 @@ if (!Number.isInteger(port) || port <= 0) {
 const dbPath = getDbPath();
 const db = openDatabase(dbPath);
 
-const app = createApp();
+const repo = new QcRepository(db);
+const app = createApp({ repo });
 const server = app.listen(port, () => {
   console.log(`[server] QC API listening on http://localhost:${port}`);
   console.log(`[server] SQLite: ${dbPath}`);

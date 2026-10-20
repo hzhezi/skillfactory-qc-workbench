@@ -330,3 +330,117 @@ HTTP/1.1 200 OK
 - 还没有 `POST /api/qc` 与 `GET /api/qc/{runId}`，因此还不能通过 HTTP 手工创建报告。
 - 真实重启验收（T12）要等 Phase 3 API 完成后，通过 HTTP 创建报告再重启服务验证。
 - 没有数据库迁移系统；当前使用 `CREATE TABLE IF NOT EXISTS`。
+
+## Phase 3 — HTTP API
+
+### 设计原理
+
+1. **依赖注入**
+   - `createApp({ repo })` 接收 `QcRepository`，测试可以用临时 SQLite 文件，生产入口用真实 DB。
+   - 路由层不直接操作 SQL，避免 HTTP、业务规则、数据库耦合在一起。
+2. **multipart 使用 memoryStorage**
+   - 题目文件很小，不需要落临时文件；也避免临时文件清理和权限问题。
+   - `file` 字段固定，`durationMs` 从表单字段读取。
+3. **固定校验顺序**
+   - 文件缺失 → `FILE_REQUIRED`；
+   - duration 非法 → `INVALID_DURATION`；
+   - 0 字节文件 → `EMPTY_FILE`；
+   - 其余交给 CSV 解析：`INVALID_CSV` / `MISSING_HEADER` / `NO_RECORDS`。
+   - 这个顺序与计划书 5.5 一致，且任何一个 400 都不会创建报告。
+4. **错误映射**
+   - `QcInputError` → 400 `{ code, error }`；
+   - multer 的字段名错误 → 400 `FILE_REQUIRED`；
+   - 其他异常 → 500 `{ code: "INTERNAL_ERROR" }`，不泄漏 SQL 或文件路径。
+5. **保存成功才返回 200**
+   - `repo.saveReport()` 内部事务提交成功后才 `res.json`；
+   - 数据库写入失败会进入 500 分支，不会返回假成功。
+6. **GET 只读数据库**
+   - `GET /api/qc/{runId}` 调用 `repo.getReport()`，没有内存缓存；
+   - 不存在返回 404 `REPORT_NOT_FOUND`。
+7. **真实进程重启测试**
+   - 用 `node --import tsx src/index.ts` 启动真实后端进程；
+   - POST 创建报告 → SIGTERM 停止 → 用同一 SQLite 文件重新启动 → GET 同一 `runId`；
+   - 这比只关闭/重开数据库连接更接近 T12 的验收方式。
+
+### 验证命令
+
+```bash
+# 全部自动化测试
+pnpm test
+
+# 类型检查与构建
+pnpm typecheck
+pnpm build
+
+# 手工验证（先启动 pnpm dev）
+curl -i -F "file=@server/tests/fixtures/sample-segments.csv" \
+  -F "durationMs=10000" \
+  http://localhost:3001/api/qc
+
+# 把上一步返回的 runId 填进去
+curl -i http://localhost:3001/api/qc/<runId>
+
+# 404
+curl -i http://localhost:3001/api/qc/qc-missing
+
+# 400
+curl -i -F "file=@server/tests/fixtures/sample-segments.csv" \
+  -F "durationMs=0" \
+  http://localhost:3001/api/qc
+```
+
+### 预期结果
+
+- `pnpm test`：`5 passed (5)`，`68 passed (68)`。
+- POST 示例：HTTP 200，`total=6`、`valid=2`、`invalid=4`，错误数组与题目示例一致。
+- GET 同一 `runId`：HTTP 200，响应与 POST 完全相同。
+- GET 不存在：HTTP 404，`{ code: "REPORT_NOT_FOUND", error: "..." }`。
+- `durationMs=0`：HTTP 400，`{ code: "INVALID_DURATION", error: "..." }`。
+- 数据库：成功请求后 `qc_runs=1`、`qc_segments=6`；所有 400 请求后计数不变。
+- 重启测试：第二次启动后 GET 的 JSON 与第一次 POST 完全一致。
+
+### 实际证据
+
+执行日期：2026-10-20
+
+```text
+$ pnpm test
+ ✓ tests/qc.rules.test.ts (13 tests)
+ ✓ tests/csv.test.ts (29 tests)
+ ✓ tests/persistence.test.ts (11 tests)
+ ✓ tests/api.test.ts (14 tests)
+ ✓ tests/restart.test.ts (1 test)
+
+ Test Files  5 passed (5)
+      Tests  68 passed (68)
+```
+
+手工使用编译后的后端与临时数据库（端口 3999）：
+
+```text
+GET  /api/health              -> 200 {"status":"ok"}
+POST /api/qc (示例 CSV)       -> 200
+runId                         -> qc-c3fd96ea-5224-450c-a212-869b8f277d76
+summary                       -> total=6, valid=2, invalid=4
+errors                        -> [[], [OVERLAP], [OVERLAP], [OUT_OF_BOUNDS], [EMPTY_ACTION], []]
+GET  /api/qc/<runId>          -> 200，与 POST 响应 equal=True
+GET  /api/qc/qc-missing       -> 404 {"code":"REPORT_NOT_FOUND","error":"报告不存在"}
+POST durationMs=0             -> 400 {"code":"INVALID_DURATION","error":"durationMs 必须是正整数（毫秒）"}
+SQLite 计数                   -> qc_runs=1, qc_segments=6
+```
+
+### 自己检查时重点看什么
+
+1. POST 返回的 `runId`、`createdAt`、`durationMs`、统计和 Segment 字段是否与题目契约一致。
+2. 所有 400 错误是否都带非空 `error`，并且数据库计数没有增加。
+3. GET 是否真的从 SQLite 读取（可以停掉后端再启动，再 GET 同一 `runId`）。
+4. 重启测试是否使用同一 DB 文件，而不是 `:memory:` 或重新建库。
+5. 数据库 trigger 模拟写入失败时，是否返回 500 而不是 200。
+6. `durationMs` 的缺失、空串、0、负数、小数、科学计数法、正号是否都被拒绝。
+7. `file` 字段名错误时是否返回 400，而不是 500 或默认 HTML 错误页。
+
+### 已知限制（Phase 3）
+
+- 前端还没有接 API；T14 需要 Phase 4/5 完成后再验收。
+- 没有登录、限流、文件大小限制；题目不要求。
+- 手工验证使用了临时端口和临时数据库；README 会说明正式端口 3001。
