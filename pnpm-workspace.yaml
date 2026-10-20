@@ -1,0 +1,11 @@
+packages:
+  - client
+  - server
+
+# pnpm 默认禁止依赖执行安装脚本；esbuild 需要下载/安装平台二进制，
+# better-sqlite3 后续需要编译原生模块，因此显式放行。
+onlyBuiltDependencies:
+  - esbuild
+  - better-sqlite3
+allowBuilds:
+  esbuild: true

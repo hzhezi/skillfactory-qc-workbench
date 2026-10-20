@@ -1,0 +1,19 @@
+# 依赖与构建产物
+node_modules/
+dist/
+coverage/
+
+# 本地 SQLite 数据库与运行时数据
+server/data/
+*.db
+*.sqlite
+*.sqlite3
+
+# 环境变量与本地配置
+.env
+.env.*
+!.env.example
+
+# 日志与系统文件
+*.log
+.DS_Store

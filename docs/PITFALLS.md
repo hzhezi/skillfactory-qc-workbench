@@ -1,0 +1,72 @@
+# 问题与解决方案记录
+
+本文件记录开发过程中**真实踩过的坑**，用于避免重复排查，并为最终交付提供可靠性证据。
+
+## 记录规则
+
+- 只记录实际发生的问题，禁止事后编造或补写未发生的内容。
+- 问题出现后先记录现象与报错原文；解决后补充根因与验证方式。
+- 尚未解决的问题必须标注为「未解决」，不要伪装成已修复。
+- 遇到疑似重复问题时，先检索本文件再开始排查。
+
+## 记录格式
+
+```markdown
+### P-XXX 问题标题
+
+- 日期：YYYY-MM-DD
+- 阶段：环境 / CSV 解析 / QC 规则 / API / 数据库 / 前端 / 测试 / 其他
+- 问题现象：……
+- 报错信息：
+  ```text
+  原始报错
+  ```
+- 根因：……
+- 解决方案：……
+- 验证方式：实际执行的命令与结果
+- 相关文件：`path/to/file:line`
+- 状态：已解决 / 未解决 / 已规避
+```
+
+## 问题列表
+
+| 编号 | 日期 | 阶段 | 问题现象 | 根因 | 解决方案 | 验证方式 | 状态 |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| P-001 | 2026-10-20 | 环境 / 依赖安装 | `pnpm install` 拒绝执行 esbuild 安装脚本 | pnpm 11 默认阻止依赖 postinstall；esbuild 需要运行 `install.js` 获取平台二进制；`package.json` 的 `pnpm` 字段已不再读取 | 执行 `pnpm approve-builds --all`，并在 `pnpm-workspace.yaml` 写入 `allowBuilds` | `pnpm install` 成功；`pnpm build` 中 Vite 正常构建 | 已解决 |
+| P-002 | 2026-10-20 | 类型检查 / 构建 | server 的 `tsc` 报 `TS5108`，无法识别 `moduleResolution=node10` | 安装到 TypeScript 7.0.2，该版本移除了旧的 `node10` resolution | 将 `server/tsconfig.json` 改为 `module: Node16` + `moduleResolution: Node16` | `pnpm typecheck`、`pnpm build` 均通过 | 已解决 |
+
+### P-001 pnpm 11 忽略 esbuild 安装脚本
+
+- 日期：2026-10-20
+- 阶段：环境 / 依赖安装
+- 问题现象：安装依赖时 pnpm 拒绝执行 esbuild 的 postinstall，导致 esbuild 平台二进制没有安装。
+- 报错信息：
+
+  ```text
+  [ERR_PNPM_IGNORED_BUILDS] Ignored build scripts: esbuild@0.28.2
+
+  Run "pnpm approve-builds" to pick which dependencies should be allowed to run scripts.
+  ```
+
+- 根因：pnpm 11 默认阻止依赖执行安装脚本；esbuild 需要运行 `install.js` 安装当前平台的二进制。另外，pnpm 提示 `package.json` 中的 `pnpm` 字段已不再读取，相关设置需要放到 `pnpm-workspace.yaml`。
+- 解决方案：执行 `pnpm approve-builds --all`，并在 `pnpm-workspace.yaml` 中写入 `allowBuilds: { esbuild: true }`；后续安装的 `better-sqlite3` 也加入 `onlyBuiltDependencies`。
+- 验证方式：重新执行 `pnpm install` 显示 `Done`；`pnpm build` 中 Vite 成功产出 `client/dist`。
+- 相关文件：`pnpm-workspace.yaml`、`package.json`
+- 状态：已解决
+
+### P-002 TypeScript 7 移除 node10 moduleResolution
+
+- 日期：2026-10-20
+- 阶段：类型检查 / 构建
+- 问题现象：server 包无法通过类型检查和构建。
+- 报错信息：
+
+  ```text
+  server typecheck: tsconfig.json(5,25): error TS5108: Option 'moduleResolution=node10' has been removed. Please remove it from your configuration.
+  ```
+
+- 根因：当前安装的是 TypeScript 7.0.2，已移除 `moduleResolution: Node`（node10）选项；原配置沿用旧版写法。
+- 解决方案：将 `server/tsconfig.json` 改为 `"module": "Node16"`、`"moduleResolution": "Node16"`，保持 CommonJS 输出语义。
+- 验证方式：`pnpm typecheck` 两个 workspace 均 `Done`；`pnpm build` 两个 workspace 均 `Done`。
+- 相关文件：`server/tsconfig.json:5`
+- 状态：已解决

@@ -1,0 +1,232 @@
+/*
+ * 视觉 token 参考 phibotics.cn 的深色技术风格：
+ * 近黑背景、白色大标题、紫色交互、暖橙强调、细线网格。
+ * 这里集中定义变量，后续组件只引用 token，避免颜色散落在各处。
+ */
+:root {
+  --bg: #050505;
+  --bg-soft: #0a0a0a;
+  --panel: #0f0f0f;
+  --line: rgba(255, 255, 255, 0.1);
+  --text: #f2f2ee;
+  --text-muted: rgba(210, 200, 190, 0.64);
+  --accent: #8b4dff;
+  --warm: #ffb45f;
+  --valid: #7fe0c3;
+
+  color-scheme: dark;
+  font-family: "MiSans", "PingFang SC", "HarmonyOS Sans", "Microsoft YaHei",
+    sans-serif;
+  color: var(--text);
+  background: var(--bg);
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#root {
+  min-height: 100%;
+}
+
+body {
+  margin: 0;
+  min-width: 320px;
+  background:
+    radial-gradient(circle at 82% 8%, rgba(139, 77, 255, 0.16), transparent 34rem),
+    radial-gradient(circle at 12% 92%, rgba(255, 180, 95, 0.08), transparent 28rem),
+    var(--bg);
+}
+
+/* 极淡的工程网格：只做空间感，不参与交互，也不遮挡文字。 */
+body::before {
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  content: "";
+  background-image:
+    linear-gradient(rgba(255, 255, 255, 0.035) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255, 255, 255, 0.035) 1px, transparent 1px);
+  background-size: 80px 80px;
+  mask-image: linear-gradient(to bottom, black, transparent 88%);
+}
+
+button,
+input {
+  font: inherit;
+}
+
+.app-shell {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+  width: min(1280px, calc(100% - 48px));
+  margin: 0 auto;
+}
+
+.topbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 24px;
+  padding: 24px 0;
+  border-bottom: 1px solid var(--line);
+}
+
+.wordmark {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 14px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+}
+
+.wordmark-mark {
+  width: 10px;
+  height: 10px;
+  border: 1px solid var(--accent);
+  border-radius: 50%;
+  box-shadow: 0 0 18px rgba(139, 77, 255, 0.8);
+}
+
+.wordmark-divider,
+.wordmark-sub {
+  color: var(--text-muted);
+  font-weight: 400;
+}
+
+.health {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 7px 12px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  color: var(--text-muted);
+  font-size: 12px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.health-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--warm);
+}
+
+.health-ok .health-dot {
+  background: var(--valid);
+  box-shadow: 0 0 12px rgba(127, 224, 195, 0.65);
+}
+
+.health-error .health-dot {
+  background: var(--warm);
+}
+
+.hero {
+  flex: 1;
+  padding: clamp(72px, 12vw, 132px) 0 64px;
+}
+
+.eyebrow {
+  margin: 0 0 20px;
+  color: var(--accent);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+}
+
+h1 {
+  max-width: 900px;
+  margin: 0;
+  font-size: clamp(48px, 8vw, 88px);
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  line-height: 1.06;
+}
+
+.lede {
+  max-width: 640px;
+  margin: 28px 0 0;
+  color: var(--text-muted);
+  font-size: 16px;
+  line-height: 1.9;
+}
+
+.phase-panel {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 32px;
+  align-items: end;
+  margin-top: 72px;
+  padding: 28px;
+  border: 1px solid var(--line);
+  border-radius: 20px;
+  background:
+    linear-gradient(135deg, rgba(139, 77, 255, 0.1), transparent 46%),
+    var(--panel);
+}
+
+.panel-label {
+  margin: 0 0 10px;
+  color: var(--accent);
+  font-size: 11px;
+  letter-spacing: 0.16em;
+}
+
+h2 {
+  margin: 0;
+  font-size: clamp(22px, 3vw, 30px);
+  font-weight: 600;
+}
+
+.panel-note {
+  margin: 0;
+  color: var(--text-muted);
+  font-size: 14px;
+  line-height: 1.8;
+}
+
+.footer {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px 28px;
+  padding: 24px 0 32px;
+  border-top: 1px solid var(--line);
+  color: var(--text-muted);
+  font-size: 12px;
+  letter-spacing: 0.06em;
+}
+
+@media (max-width: 767px) {
+  .app-shell {
+    width: min(100% - 32px, 1280px);
+  }
+
+  .topbar {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 14px;
+  }
+
+  .phase-panel {
+    grid-template-columns: 1fr;
+    gap: 20px;
+    margin-top: 48px;
+    padding: 22px;
+  }
+
+  .hero {
+    padding-top: 64px;
+  }
+}
