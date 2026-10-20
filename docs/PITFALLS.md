@@ -37,7 +37,7 @@
 | P-003 | 2026-10-20 | CSV 解析 | 前导空白行导致合法表头被误判为 `INVALID_CSV` | `csv-parse` 在 `relax_column_count: false` 时把首条空白记录当成列数基准 | 改为 `relax_column_count: true`，过滤空白行后手动校验数据行列数 | `pnpm test` 42 个测试全部通过 | 已解决 |
 | P-004 | 2026-10-20 | 环境 / 依赖安装 | 安装 `better-sqlite3` 时 tarball 下载卡住，命令超时 | 当前 registry 为 npmmirror，`better-sqlite3-13.0.3.tgz` 请求报错并反复重试 | 使用 `--registry=https://registry.npmjs.org` 重新安装；原生模块通过 node-gyp 编译成功 | `pnpm --filter server add better-sqlite3 --registry=...` 成功；持久化测试 11 个通过 | 已解决 |
 | P-005 | 2026-10-20 | API / 模块解析 | API 测试与类型检查无法加载 `app.ts` 的依赖 | `app.ts` 位于 `src/` 根目录，却写成 `../qc/csv`、`../db/...`，实际应使用 `./qc/...`、`./db/...` | 修正相对导入路径 | `pnpm typecheck` 通过；`pnpm test` 68 个测试通过 | 已解决 |
-| P-006 | 2026-10-20 | 前端 / 本地联调 | 浏览器访问 `127.0.0.1:5173` 被拒绝，但 Vite 进程存在 | Vite 默认监听 `localhost`，本机解析为 IPv6 `[::1]`，未监听 IPv4 `127.0.0.1` | 使用 `http://localhost:5173` 访问；README 统一写 localhost | 浏览器成功加载页面，health 显示正常 | 已解决 |
+| P-006 | 2026-10-20 | 前端 / 本地联调 | 浏览器访问 `127.0.0.1:5173` 被拒绝，但 Vite 进程存在 | Vite 默认监听 `localhost`，本机解析为 IPv6 `[::1]`，未监听 IPv4 `127.0.0.1` | 使用 `http://localhost:5173` 访问；README 统一写 localhost | 浏览器成功加载页面并显示上传表单 | 已解决 |
 
 ### P-001 pnpm 11 忽略 esbuild 安装脚本
 
@@ -143,6 +143,6 @@
 
 - 根因：Vite 默认监听 `localhost`，当前系统把它解析到 IPv6 `[::1]`；因此 5173 只绑定在 `[::1]:5173`，没有监听 IPv4。
 - 解决方案：统一使用 `http://localhost:5173`；如果必须用 127.0.0.1，可给 Vite 加 `--host 127.0.0.1`。README 采用 localhost。
-- 验证方式：浏览器打开 `http://localhost:5173` 成功加载；页面顶部显示 `API 正常`。
+- 验证方式：浏览器打开 `http://localhost:5173` 成功加载，并显示上传表单。
 - 相关文件：`README.md`（启动地址）、`client/vite.config.ts`
 - 状态：已解决

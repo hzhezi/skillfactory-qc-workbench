@@ -118,39 +118,6 @@ button {
   font-weight: 400;
 }
 
-.health {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  padding: 7px 12px;
-  border: 1px solid var(--line);
-  border-radius: 999px;
-  color: var(--text-muted);
-  font-size: 12px;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-}
-
-.health-dot {
-  width: 6px;
-  height: 6px;
-  border-radius: 50%;
-  background: var(--warm);
-}
-
-.health-checking .health-dot {
-  animation: pulse 1.2s ease-in-out infinite;
-}
-
-.health-ok .health-dot {
-  background: var(--valid);
-  box-shadow: 0 0 12px rgba(127, 224, 195, 0.65);
-}
-
-.health-error .health-dot {
-  background: var(--warm);
-}
-
 .hero {
   padding: clamp(56px, 8vw, 96px) 0 48px;
   transition: padding 180ms ease;
@@ -820,16 +787,6 @@ h2 {
 @keyframes spin {
   to {
     transform: rotate(360deg);
-  }
-}
-
-@keyframes pulse {
-  0%,
-  100% {
-    opacity: 0.45;
-  }
-  50% {
-    opacity: 1;
   }
 }
 

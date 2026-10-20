@@ -70,7 +70,6 @@ open http://localhost:5173
 - `curl http://localhost:5173/api/health`：同样返回 `200` 与 `{"status":"ok"}`，说明代理生效。
 - 浏览器页面：
   - 顶部显示 `SkillFactory / QC Workbench`；
-  - 右上角显示绿色 `API 正常`；
   - 页面为深色技术风格，有细网格和紫色标签。
 
 ### 实际证据
@@ -106,14 +105,14 @@ HTTP/1.1 200 OK
 {"status":"ok"}
 ```
 
-浏览器截图检查：页面标题、API 状态、深色背景和网格均正常显示。
+浏览器截图检查：页面标题、深色背景和网格均正常显示。
 
 ### 自己检查时重点看什么
 
 1. `pnpm typecheck` 是否两个包都通过，而不是只看客户端。
 2. `pnpm build` 是否同时生成 `server/dist` 和 `client/dist`。
 3. 直接访问 3001 和通过 5173 代理访问是否都返回 `200`。
-4. 浏览器右上角是否显示 `API 正常`；若显示 `API 不可用`，先检查后端 3001 是否启动。
+4. 浏览器页面是否正常加载；若加载失败，先检查 Vite 5173 与后端 3001 是否启动。
 5. 验证结束后关闭 `pnpm dev`，确认 3001 / 5173 端口释放。
 
 ### 已知限制（Phase 0）
@@ -486,7 +485,7 @@ pnpm dev
 
 ### 预期结果
 
-- 顶部显示 `API 正常`。
+- 顶部显示 `SkillFactory / QC Workbench`。
 - 报告区显示 runId、视频总时长 10,000 ms、创建时间。
 - 统计：`TOTAL 6`、`VALID 2`、`INVALID 4`。
 - 表格 6 行，顺序 s1–s6；错误码与题目示例一致。
@@ -514,7 +513,7 @@ server build: Done
 -> 统计 6 / 2 / 4
 -> Segment 表格 6 行，错误顺序与 API 一致
 -> 点击 Invalid，显示 4 行；统计保持 6 / 2 / 4
--> 顶部 health 显示 “API 正常”
+-> 顶部显示 `SkillFactory / QC Workbench`
 ```
 
 当前页面视觉：深色技术风格、左侧上传面板、右侧报告工具栏、三张统计卡、筛选胶囊、Segment 表格与错误标签。

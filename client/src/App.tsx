@@ -12,17 +12,9 @@ import { SummaryStats } from "./components/SummaryStats";
 import { UploadForm } from "./components/UploadForm";
 import type { QcReport, SegmentFilter } from "./types/qc";
 
-type HealthState = "checking" | "ok" | "error";
 type LoadingState = "idle" | "fetching" | "submitting";
 
-const HEALTH_LABELS: Record<HealthState, string> = {
-  checking: "检查中",
-  ok: "正常",
-  error: "不可用",
-};
-
 export default function App() {
-  const [health, setHealth] = useState<HealthState>("checking");
   const [report, setReport] = useState<QcReport | null>(null);
   const [loading, setLoading] = useState<LoadingState>("idle");
   const [error, setError] = useState<ApiError | null>(null);
@@ -47,33 +39,6 @@ export default function App() {
 
     return report.segments.filter((segment) => segment.status === filter);
   }, [report, filter]);
-
-  useEffect(() => {
-    let cancelled = false;
-
-    // 通过 Vite 代理检查后端；只用于顶部状态灯，不阻塞页面。
-    fetch("/api/health")
-      .then((response) => {
-        if (!response.ok) {
-          throw new Error(`HTTP ${response.status}`);
-        }
-        return response.json() as Promise<{ status: string }>;
-      })
-      .then((data) => {
-        if (!cancelled) {
-          setHealth(data.status === "ok" ? "ok" : "error");
-        }
-      })
-      .catch(() => {
-        if (!cancelled) {
-          setHealth("error");
-        }
-      });
-
-    return () => {
-      cancelled = true;
-    };
-  }, []);
 
   useEffect(() => {
     const runId = readRunIdFromUrl();
@@ -180,10 +145,6 @@ export default function App() {
           <span>SkillFactory</span>
           <span className="wordmark-divider">/</span>
           <span className="wordmark-sub">QC Workbench</span>
-        </div>
-        <div className={`health health-${health}`}>
-          <span className="health-dot" aria-hidden="true" />
-          API {HEALTH_LABELS[health]}
         </div>
       </header>
 

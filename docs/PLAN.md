@@ -537,7 +537,7 @@ runId: string | null   // 来自 URL query
 
 **组件**
 
-- 顶部栏：左侧 `SkillFactory / QC Workbench` 字标，右侧健康状态点与端口信息。
+- 顶部栏：左侧 `SkillFactory / QC Workbench` 字标；健康检查仍保留为后端 `/api/health`，不在页面右上角展示。
 - 上传面板：深色卡片、细边框、右上角紫色微光；主按钮紫色实心或白色实心。
 - 统计卡：大号数字 + 小写标签；有效/无效使用状态色，不滥用渐变。
 - 表格：极弱斑马纹、hover 提亮、状态徽章；错误码用等宽字体。
