@@ -444,3 +444,91 @@ SQLite 计数                   -> qc_runs=1, qc_segments=6
 - 前端还没有接 API；T14 需要 Phase 4/5 完成后再验收。
 - 没有登录、限流、文件大小限制；题目不要求。
 - 手工验证使用了临时端口和临时数据库；README 会说明正式端口 3001。
+
+## Phase 4 — React 页面
+
+### 设计原理
+
+1. **上传与结果分区**
+   - 左侧固定上传面板，右侧结果区；上传后无需跳页。
+   - 桌面端上传面板 sticky，滚动查看长表格时仍可重新上传。
+2. **筛选只在前端过滤**
+   - `visibleSegments` 由 `report.segments` 按状态过滤，统计始终来自报告本身。
+   - 筛选不会重新调用 QC 接口，符合题目要求。
+3. **状态完整**
+   - Loading、错误、空状态、报告状态互斥展示，避免旧内容残留。
+   - 新请求开始时先清空旧报告，失败时不会把旧报告当成新结果。
+4. **表单校验**
+   - 文件必选；duration 使用文本输入 + 正则，拒绝空、0、负数、小数、科学计数法。
+   - 后端仍然做最终校验，前端校验只用于快速反馈。
+5. **视觉 token**
+   - 近黑背景、紫色交互、暖橙无效、薄荷绿有效、1px 细线和淡网格。
+   - 只借鉴 phibotics.cn 的视觉语言，没有复制其 logo、图片、文案或字体文件。
+6. **可访问性基础**
+   - 表单 label 关联输入框；错误使用 `role="alert"`；筛选按钮使用 `aria-pressed`。
+   - 状态同时用颜色和文字表达，不只依赖颜色。
+
+### 验证命令
+
+```bash
+pnpm typecheck
+pnpm build
+pnpm dev
+```
+
+浏览器打开 `http://localhost:5173`，然后：
+
+1. 选择 `server/tests/fixtures/sample-segments.csv`。
+2. 输入 `10000`。
+3. 点击「开始检查」。
+4. 检查统计、表格和错误说明。
+5. 点击 `Invalid`，确认只显示 4 条无效记录，统计仍是 6 / 2 / 4。
+
+### 预期结果
+
+- 顶部显示 `API 正常`。
+- 报告区显示 runId、视频总时长 10,000 ms、创建时间。
+- 统计：`TOTAL 6`、`VALID 2`、`INVALID 4`。
+- 表格 6 行，顺序 s1–s6；错误码与题目示例一致。
+- 点击 `Invalid` 后表格只剩 s2、s3、s4、s5；统计不变。
+- 点击 `Valid` 后只剩 s1、s6；点击 `All` 恢复 6 行。
+
+### 实际证据
+
+执行日期：2026-10-20
+
+```text
+$ pnpm typecheck
+client typecheck: Done
+server typecheck: Done
+
+$ pnpm build
+client build: Done
+server build: Done
+```
+
+浏览器实测：
+
+```text
+上传 sample-segments.csv，durationMs=10000
+-> 统计 6 / 2 / 4
+-> Segment 表格 6 行，错误顺序与 API 一致
+-> 点击 Invalid，显示 4 行；统计保持 6 / 2 / 4
+-> 顶部 health 显示 “API 正常”
+```
+
+当前页面视觉：深色技术风格、左侧上传面板、右侧报告工具栏、三张统计卡、筛选胶囊、Segment 表格与错误标签。
+
+### 自己检查时重点看什么
+
+1. 上传后是否出现 Loading，按钮是否禁用，避免重复提交。
+2. 统计数字是否来自报告而不是筛选后的列表。
+3. 点击 All / Valid / Invalid 时 Network 面板不应新增 `/api/qc` 请求。
+4. 空动作是否显示为 `（空）`，错误说明是否可读。
+5. 空文件或非法时长是否显示清楚错误，而不是静默失败。
+6. 页面在窄屏下是否出现横向滚动而不是内容挤坏。
+
+### 已知限制（Phase 4）
+
+- 刷新页面后报告会丢失，因为 runId 还没有写入 URL / localStorage；Phase 5 补齐。
+- 请求竞态保护、404 恢复、B01 时间轴、B02 CSV 导出尚未实现。

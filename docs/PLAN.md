@@ -1,8 +1,8 @@
 # SkillFactory Lite — 实施计划书
 
-- 版本：v0.5
+- 版本：v0.6
 - 日期：2026-10-20
-- 状态：**Phase 3 已完成并验证；Phase 4 待开始**
+- 状态：**Phase 4 已完成并验证；Phase 5 待开始**
 - 需求来源：`题目要求.md`
 - 协作规范：`AGENTS.md`
 - 已确认决策：`docs/DECISIONS.md`（D-001 TypeScript、D-002 pnpm、D-003 视觉参考）
@@ -648,21 +648,28 @@ runId: string | null   // 来自 URL query
 
 ### Phase 4 — React 页面
 
-- [ ] 上传表单、时长输入、开始检查
-- [ ] Loading 与防重复提交
-- [ ] 统计卡片、报告信息、Segment 表格
-- [ ] All / Valid / Invalid 筛选
-- [ ] 文件 / 时长 / API 错误提示
-- [ ] 空状态
-- [ ] 新报告不混入旧 Segment
-- [ ] 落地深色技术风格与设计 token（参考 phibotics.cn，不复制素材）
-- [ ] 响应式布局与状态徽章
+- [x] 上传表单、时长输入、开始检查
+- [x] Loading 与防重复提交
+- [x] 统计卡片、报告信息、Segment 表格
+- [x] All / Valid / Invalid 筛选
+- [x] 文件 / 时长 / API 错误提示
+- [x] 空状态
+- [x] 新报告不混入旧 Segment
+- [x] 落地深色技术风格与设计 token（参考 phibotics.cn，不复制素材）
+- [x] 响应式布局与状态徽章
 
 **完成标准**
 
 - `pnpm typecheck`、`pnpm build` 通过
 - 浏览器手工上传示例 CSV，结果与 API 一致
 - 筛选只影响列表，不改变统计
+
+**验证结果**
+
+- 2026-10-20 已执行：`pnpm typecheck`、`pnpm build` 通过。
+- 浏览器上传示例 CSV：显示 `total=6 / valid=2 / invalid=4`，Segment 表格与错误码正确。
+- 点击 Invalid：只显示 4 条无效记录，统计仍为 6 / 2 / 4。
+- 证据见 `docs/VERIFICATION.md` 的 Phase 4 章节。
 
 ### Phase 5 — 刷新恢复与竞态保护
 
@@ -859,6 +866,7 @@ runId: string | null   // 来自 URL query
 | 2026-10-20 | v0.4：Phase 2 完成 | SQLite 持久化 53 个测试通过 |
 | 2026-10-20 | 增加第 17 节评分标准对照 | 按题目第 7 节逐项自检，补齐交付验证清单 |
 | 2026-10-20 | v0.5：Phase 3 完成 | API、错误契约、真实进程重启 68 个测试通过 |
+| 2026-10-20 | v0.6：Phase 4 完成 | React 上传、统计、表格、筛选、错误提示 |
 
 ## 17. 评分标准对照（交付前自检）
 
@@ -869,7 +877,7 @@ runId: string | null   // 来自 URL query
 | QC 业务逻辑 | 25 | 规则测试 13 个；API 级 T02/T05/T06/T07 断言；官方示例 2/4 | 已完成核心与 API 断言 | 最终 T01–T15 自检 |
 | SQLite 数据持久化 | 15 | 两张表、事务、读回、关闭重开、真实进程重启、写入失败 500 | 已完成 | 最终重启手工复验 |
 | CSV 解析与 API 契约 | 15 | CSV 29 个测试；三条固定接口；400/404/500；输入顺序 | 已完成 | 最终 curl 演示记录 |
-| React 前端功能 | 15 | 仅 Phase 0 骨架 | 未开始 | 上传、Loading、统计、筛选、错误、刷新恢复 |
+| React 前端功能 | 15 | 上传、Loading、统计、表格、筛选、错误提示已完成 | Phase 4 完成，刷新恢复未做 | 刷新恢复与竞态（Phase 5） |
 | 自动化测试 | 10 | 68 个测试通过 | 已超过要求 | README 写明命令；干净环境复现 |
 | 可运行性与代码质量 | 5 | workspace、typecheck、build 通过 | 部分完成 | README 从零启动；结构与注释复查 |
 | AI 使用说明与交付 | 10 | DECISIONS、PITFALLS、VERIFICATION | 部分完成 | `AI_USAGE.md`、README 中的 AI 记录、完成情况与已知问题 |
