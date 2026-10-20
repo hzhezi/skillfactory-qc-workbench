@@ -96,11 +96,21 @@ export default function App() {
     }
   }
 
+  function handleAttempt() {
+    // 客户端校验失败也算一次新的检查尝试：先取消旧请求并清空旧结果，
+    // 避免旧报告被误认为本次尝试的结果。
+    abortRef.current?.abort();
+    requestSeq.current += 1;
+    setReport(null);
+    setError(null);
+    setFilter("ALL");
+    updateRunIdInUrl(null);
+  }
+
   async function handleSubmit(file: File, durationMs: number) {
     const { seq, controller } = beginRequest();
 
-    // 新请求开始前清空旧结果并从 URL 移除旧 runId：
-    // 这样失败时不会显示上一份报告，刷新也不会又回到旧报告。
+    // 新请求开始前再次清空旧结果，确保 API 请求失败时不会显示上一份报告。
     setReport(null);
     setError(null);
     setFilter("ALL");
@@ -169,7 +179,11 @@ export default function App() {
             <p className="panel-note">
               必需列：segment_id、start_ms、end_ms、action。列顺序可调整，允许额外列。
             </p>
-            <UploadForm loading={isLoading} onSubmit={handleSubmit} />
+            <UploadForm
+              loading={isLoading}
+              onAttempt={handleAttempt}
+              onSubmit={handleSubmit}
+            />
           </aside>
 
           <section className="results" aria-label="QC 结果">

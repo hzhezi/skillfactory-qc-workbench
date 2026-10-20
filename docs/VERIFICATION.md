@@ -579,6 +579,7 @@ pnpm dev
 - 404：显示 `REPORT_NOT_FOUND` 和「报告不存在」。
 - 新提交失败：显示 `MISSING_HEADER`，旧报告和旧 runId 都不保留。
 - 失败后刷新：空状态，不显示旧报告。
+- 已有报告时，即使客户端校验失败（例如未选择文件），旧报告与 URL 也会先被清空，只显示表单错误。
 
 ### 实际证据
 
@@ -597,6 +598,9 @@ GET /api/qc/qc-b9a725ce-...             200
 
 访问 ?runId=qc-missing
 -> 显示 REPORT_NOT_FOUND / 报告不存在
+
+已有报告时输入无效内容并提交
+-> 旧报告与 URL 先清空，只显示表单错误
 
 有效报告后上传缺少 action 表头的 CSV
 -> URL 变为 /（无 runId）

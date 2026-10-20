@@ -2,13 +2,14 @@ import { useRef, useState, type FormEvent } from "react";
 
 interface UploadFormProps {
   loading: boolean;
+  onAttempt: () => void;
   onSubmit: (file: File, durationMs: number) => Promise<void>;
 }
 
 // 与后端保持一致：十进制正整数，可带首尾空白；前导零允许。
 const POSITIVE_INTEGER = /^\d+$/;
 
-export function UploadForm({ loading, onSubmit }: UploadFormProps) {
+export function UploadForm({ loading, onAttempt, onSubmit }: UploadFormProps) {
   const [file, setFile] = useState<File | null>(null);
   const [durationText, setDurationText] = useState("");
   const [validationError, setValidationError] = useState<string | null>(null);
@@ -20,6 +21,10 @@ export function UploadForm({ loading, onSubmit }: UploadFormProps) {
     if (loading) {
       return;
     }
+
+    // 只要用户尝试提交，就先清空上一份报告，即使接下来是客户端校验失败。
+    // 这样旧报告不会被误认为本次新请求的结果。
+    onAttempt();
 
     if (file === null) {
       setValidationError("请选择 CSV 文件。");
