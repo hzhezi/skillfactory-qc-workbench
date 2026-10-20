@@ -39,6 +39,7 @@
 | P-005 | 2026-10-20 | API / 模块解析 | API 测试与类型检查无法加载 `app.ts` 的依赖 | `app.ts` 位于 `src/` 根目录，却写成 `../qc/csv`、`../db/...`，实际应使用 `./qc/...`、`./db/...` | 修正相对导入路径 | `pnpm typecheck` 通过；`pnpm test` 68 个测试通过 | 已解决 |
 | P-006 | 2026-10-20 | 前端 / 本地联调 | 浏览器访问 `127.0.0.1:5173` 被拒绝，但 Vite 进程存在 | Vite 默认监听 `localhost`，本机解析为 IPv6 `[::1]`，未监听 IPv4 `127.0.0.1` | 使用 `http://localhost:5173` 访问；README 统一写 localhost | 浏览器成功加载页面并显示上传表单 | 已解决 |
 | P-007 | 2026-10-20 | API / 类型检查 | 拆分路由后 `tsc` 报 `req.params.runId` 不能传给 `getReport(string)` | Express 5 类型把 params 值定义为 `string | string[]` | 用 `Array.isArray` 取第一个值，再传给 repository | `pnpm typecheck` 通过；75 个测试通过 | 已解决 |
+| P-008 | 2026-10-20 | 共享类型 / 模块解析 | server 引用 shared 包时 TS 报 CJS 不能导入 ESM | shared 是 type-only 包，却设置了 `"type": "module"`；server 是 CommonJS | 移除 shared 的 `type: module`，保留 type-only exports | `pnpm typecheck` 通过；build/tests 通过 | 已解决 |
 
 ### P-001 pnpm 11 忽略 esbuild 安装脚本
 
@@ -163,4 +164,22 @@
 - 解决方案：先将 `req.params.runId` 归一化为单个字符串：数组取第一个，再判断空值并传给 repository。
 - 验证方式：`pnpm typecheck` 通过；server 68 + client 7 = 75 个测试通过。
 - 相关文件：`server/src/http/routes.ts`
+- 状态：已解决
+
+### P-008 type-only shared 包不应声明 type: module
+
+- 日期：2026-10-20
+- 阶段：共享类型 / 模块解析
+- 问题现象：引入 `@skillfactory/shared` 后，server 的类型检查失败。
+- 报错信息：
+
+  ```text
+  error TS1541: Type-only import of an ECMAScript module from a CommonJS module must have a 'resolution-mode' attribute.
+  error TS1479: The current file is a CommonJS module whose imports will produce 'require' calls; however, the referenced file is an ECMAScript module and cannot be imported with 'require'.
+  ```
+
+- 根因：shared 包只包含类型，但 `package.json` 设置了 `"type": "module"`；server 仍是 CommonJS，TypeScript 认为跨模块类型导入需要额外 resolution-mode 或改为 ESM。
+- 解决方案：移除 shared 的 `"type": "module"`。shared 没有运行时代码，仅通过 `types` / `exports.types` 提供类型，CJS server 可以正常做 type-only 导入。
+- 验证方式：`pnpm typecheck`（shared + server + client + tests）通过；`pnpm build`、`pnpm test` 通过。
+- 相关文件：`shared/package.json`、`server/src/qc/types.ts`、`server/src/qc/errorCodes.ts`
 - 状态：已解决

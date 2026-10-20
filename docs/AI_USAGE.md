@@ -8,7 +8,7 @@
 - OpenCode CLI，模型 `deepseek-flash`：代码生成、重构、测试编写、文档草稿。
 - pnpm 11.7.0：workspace 依赖管理与脚本调度。
 - TypeScript / Vitest / Supertest：类型检查、单元测试、HTTP 集成测试。
-- Chrome DevTools MCP：浏览器手工验收，包括上传 CSV、筛选、刷新恢复与 Network 请求检查。
+- Playwright：浏览器端到端测试；Chrome DevTools MCP：补充手工验收。
 - SQLite CLI（`sqlite3`）：检查表结构与落盘数据。
 
 ## 2. AI 生成范围
@@ -34,9 +34,11 @@ AI 生成了：
 | D-003 | 前端视觉参考 phibotics.cn | 用户自主提出 | 深色技术风格、紫/橙/薄荷绿状态色、时间轴视觉方向；不复制素材 | 浏览器验收、设计 token |
 | D-004 | 事务内读回报告 | 用户自主提出（代码审查） | POST 响应来自 SQLite 读回结果，避免内存对象与数据库漂移 | 持久化/API 测试 |
 | D-005 | 拆分 HTTP 层 | 用户自主提出（代码审查） | service / routes / errorHandler 职责分离 | API 测试、typecheck |
-| D-006 | API 响应运行时校验 | 用户自主提出（代码审查） | 手工类型镜像 + 运行时契约校验 | `apiValidation.test.ts` |
+| D-006 | API 响应运行时校验 | 用户自主提出（代码审查） | 运行时契约校验；类型镜像随后由 D-009 替代 | `apiValidation.test.ts` |
 | D-007 | CSV 导出防公式注入 | 用户自主提出（代码审查） | 危险前缀加 `'` | `csvExport.test.ts` |
 | D-008 | 测试纳入类型检查 | 用户自主提出（代码审查） | tests 也由 `tsc` 检查 | `pnpm typecheck` |
+| D-009 | 引入 shared workspace 包 | 用户自主提出 | API 类型收敛到 `@skillfactory/shared` | `pnpm typecheck`、build |
+| D-010 | 增加 Playwright E2E | 用户自主提出 | 自动覆盖上传、筛选、刷新、导出与失败清空旧结果 | `pnpm test:e2e` 1 passed |
 
 这三项决策分别影响后端工具链、依赖安装方式和视觉语言，属于会被评审直接观察到的工程选择，而不是形式化记录。
 
@@ -64,7 +66,8 @@ pnpm test
 
 - `pnpm typecheck`：client / server 均通过；
 - `pnpm build`：client / server 均通过；
-- `pnpm test`：**75 passed**（server 68，client 7）。
+- `pnpm test`：**75 passed**（server 68，client 7）；
+- `pnpm test:e2e`：1 passed（Playwright，独立 3101/5273 端口和临时 SQLite）。
 
 测试覆盖：
 
@@ -93,7 +96,7 @@ pnpm test
 
 ## 5. 已知限制
 
-- 没有自动化浏览器 E2E；T14 依赖手工验收，但已保留 Network 证据。
+- E2E 首次运行需要安装 Playwright Chromium；未安装时 `pnpm test:e2e` 会失败。
 - 时间轴不绘制时间无法解析的 Segment，只显示无法定位数量。
 - 重叠检查 O(n²)，面向题目限定的 ≤100 条记录。
 - 未实现报告历史列表、登录、视频播放；题目不要求。

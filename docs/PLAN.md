@@ -1,8 +1,8 @@
 # SkillFactory Lite — 实施计划书
 
-- 版本：v1.1
+- 版本：v1.2
 - 日期：2026-10-20
-- 状态：**Phase 7 已完成；代码审查加固完成**
+- 状态：**Phase 7 已完成；共享类型与 E2E 已补齐**
 - 需求来源：`题目要求.md`
 - 协作规范：`AGENTS.md`
 - 已确认决策：`docs/DECISIONS.md`（D-001 TypeScript、D-002 pnpm、D-003 视觉参考）
@@ -775,14 +775,16 @@ runId: string | null   // 来自 URL query
 
 ### 11.4 前端验证
 
-题目不强制 E2E。手工清单：
+自动化：`pnpm test:e2e`（Playwright）。
 
-- 上传、Loading、防重复提交
-- 统计与表格
-- All / Valid / Invalid 筛选
-- 文件错误、时长错误、网络错误
-- 刷新后通过 URL `runId` 恢复
-- 404 提示
+- 上传示例 CSV、duration=10000；
+- 统计 6 / 2 / 4；
+- All / Valid / Invalid 筛选；
+- 刷新后重新请求 `GET /api/qc/{runId}`；
+- 导出完整 CSV（筛选 Invalid 时仍 6 条）；
+- 缺少表头时旧报告和 URL 清空。
+
+手工补充：Loading、404、网络错误等状态。
 - 新请求失败不显示旧报告
 - 空状态
 
@@ -810,7 +812,7 @@ runId: string | null   // 来自 URL query
 | T11 | 按 `runId` 读取完整报告 | API + 持久化测试 | ✅ 已通过 |
 | T12 | 重启后仍能读取 | 真实进程重启测试 + 手工复验 | ✅ 已通过 |
 | T13 | 连续两份报告互不覆盖 | API + 持久化测试 | ✅ 已通过 |
-| T14 | 前端检查、筛选、刷新恢复 | 浏览器手工验收 | ✅ 已通过 |
+| T14 | 前端检查、筛选、刷新恢复 | Playwright E2E + 手工抽查 | ✅ 已通过 |
 | T15 | README 测试命令可运行 | 干净副本 `pnpm install --frozen-lockfile` + `pnpm test` | ✅ 已通过 |
 
 > 状态在每阶段完成后更新；未实际执行前不得标为「通过」。
@@ -855,7 +857,7 @@ runId: string | null   // 来自 URL query
 | SQLite 并发写 | `SQLITE_BUSY` | 单进程、WAL、busy_timeout；失败返回 500，不假成功 |
 | 数据库文件被误提交 | 仓库污染 | `.gitignore` 排除 `*.db` / `*.sqlite` / `data/` |
 | 前端竞态 | 旧响应覆盖新报告 | 请求序号 / AbortController + 清空旧结果 |
-| 无 E2E 测试 | 前端回归靠手工 | 保留 T14 手工验收清单，关键状态逐一检查 |
+| E2E 依赖 Playwright 浏览器 | 首次运行失败 | README 写明 `pnpm exec playwright install chromium`；E2E 使用独立端口和临时 DB |
 | 端口被占用 | 启动失败 | README 写明端口；`PORT` 环境变量可覆盖（建议） |
 | 时间显示时区 | 用户误解 | API 返回 UTC ISO；前端只做本地化展示，不改变存储 |
 
@@ -863,7 +865,7 @@ runId: string | null   // 来自 URL query
 
 计划阶段列出的技术候选，最终处理如下：
 
-- **用户明确决策**：D-001 TypeScript、D-002 pnpm、D-003 视觉参考，以及代码审查后的 D-004～D-008。
+- **用户明确决策**：D-001 TypeScript、D-002 pnpm、D-003 视觉参考，以及代码审查后的 D-004～D-010。
 - **其余事项**：由 AI 默认实现并通过测试，属于实现选择，不写入用户决策记录。
 
 | 事项 | 最终处理 | 状态 |
@@ -880,6 +882,8 @@ runId: string | null   // 来自 URL query
 | 测试 | Vitest + Supertest + 临时 DB | 已实现 |
 | 边界口径 | 第 6.2 / 6.3 节 | 已实现并测试 |
 | 设计主张 | 第 13.2 节 | 已落地 |
+| 共享 API 类型 | `@skillfactory/shared`（type-only） | 已实现 |
+| 浏览器 E2E | Playwright，独立 3101 / 5273 端口 | 已实现 |
 
 详细区分见 `docs/DECISIONS.md`：D-001～D-008 是用户决策或用户提出的审查改进，其余是 AI 默认实现。
 
@@ -898,6 +902,7 @@ runId: string | null   // 来自 URL query
 | 2026-10-20 | v0.8：Phase 6 完成 | 时间轴、CSV 导出、B03 边界测试 |
 | 2026-10-20 | v1.0：Phase 7 完成 | README、AI_USAGE、T01–T15、干净环境复现 |
 | 2026-10-20 | v1.1：代码审查加固 | 事务内读回、HTTP 分层、运行时校验、公式注入、测试类型检查 |
+| 2026-10-20 | v1.2：共享类型与 E2E | 引入 `@skillfactory/shared` 与 Playwright E2E |
 
 ## 17. 评分标准对照（交付前自检）
 
@@ -908,8 +913,8 @@ runId: string | null   // 来自 URL query
 | QC 业务逻辑 | 25 | 规则测试 13 个；API 级 T02/T05/T06/T07 断言；官方示例 2/4 | 已完成 | T01–T15 已自检 |
 | SQLite 数据持久化 | 15 | 两张表、事务、读回、关闭重开、真实进程重启、写入失败 500 | 已完成 | 真实重启已通过 |
 | CSV 解析与 API 契约 | 15 | CSV 29 个测试；三条固定接口；400/404/500；输入顺序 | 已完成 | curl 与测试已记录 |
-| React 前端功能 | 15 | 上传、Loading、统计、表格、筛选、错误、URL 刷新恢复、竞态保护、时间轴 | 已完成 | T14 已验收 |
-| 自动化测试 | 10 | 75 个测试通过（server 68 + client 7） | 已超过要求 | README 命令已运行 |
+| React 前端功能 | 15 | 上传、Loading、统计、表格、筛选、错误、URL 刷新恢复、竞态保护、时间轴 | 已完成 | T14 已由 E2E 覆盖 |
+| 自动化测试 | 10 | 75 个测试 + 1 个 Playwright E2E 通过 | 已超过要求 | README 命令已运行 |
 | 可运行性与代码质量 | 5 | workspace、typecheck、build、干净副本安装/启动通过 | 已完成 | 干净副本已通过 |
 | AI 使用说明与交付 | 10 | DECISIONS、PITFALLS、VERIFICATION、AI_USAGE、README、T01–T15 | 已完成 | 无 |
 | 加分项 | 5 | B01 时间轴、B02 CSV 导出、B03 额外测试 | 已完成 | 已手工复验 |
@@ -927,6 +932,6 @@ runId: string | null   // 来自 URL query
 ### 当前明确不做 / 已知限制
 
 - 报告历史列表、登录、视频播放、编辑/删除、分页。
-- 没有自动化浏览器 E2E；T14 已手工验收，并保留 Network 证据。
+- E2E 首次运行需要安装 Playwright Chromium；未安装时 `pnpm test:e2e` 会失败。
 - 重叠检查 O(n²)，目标数据量为 ≤100 条。
 - 其余未公开边界口径见 6.2 / 6.3。

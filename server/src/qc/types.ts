@@ -1,4 +1,16 @@
-import type { QcErrorCode } from "./errorCodes";
+import type {
+  QcErrorCode,
+  QcSegment,
+  QcReport,
+  SegmentBase,
+  SegmentStatus,
+} from "@skillfactory/shared";
+
+export type {
+  QcErrorCode,
+  QcReport,
+  SegmentStatus,
+} from "@skillfactory/shared";
 
 /**
  * CSV 解析后的原始 Segment。
@@ -6,20 +18,9 @@ import type { QcErrorCode } from "./errorCodes";
  * startMs / endMs 解析失败时为 null，而不是 0；
  * 这样 API 能按题目要求返回 null，规则层也能据此判断 INVALID_RANGE。
  */
-export interface RawSegment {
-  rowIndex: number;
-  segmentId: string;
-  startMs: number | null;
-  endMs: number | null;
-  action: string;
-}
+export interface RawSegment extends SegmentBase {}
 
-export type SegmentStatus = "VALID" | "INVALID";
-
-export interface EvaluatedSegment extends RawSegment {
-  status: SegmentStatus;
-  errors: QcErrorCode[];
-}
+export interface EvaluatedSegment extends QcSegment {}
 
 /**
  * 一次 QC 的结果，不包含 runId / createdAt。
@@ -31,15 +32,4 @@ export interface QcEvaluation {
   valid: number;
   invalid: number;
   segments: EvaluatedSegment[];
-}
-
-/**
- * 已持久化的 QC 报告。
- *
- * runId / createdAt 由持久化层生成；读取时从 SQLite 还原，
- * 因此 API 的 GET 响应和 POST 成功响应可以共用同一个类型。
- */
-export interface QcReport extends QcEvaluation {
-  runId: string;
-  createdAt: string;
 }

@@ -24,7 +24,8 @@
 | SQLite 驱动 | better-sqlite3 | 13.0.3 |
 | CSV 解析 | csv-parse | 7.0.3 |
 | multipart | multer | 2.4.0 |
-| 测试 | Vitest + Supertest | 5.0.5 / 7.3.1 |
+| 单元/集成测试 | Vitest + Supertest | 5.0.5 / 7.3.1 |
+| 浏览器 E2E | Playwright | 1.64.1 |
 | 样式 | 手写 CSS | — |
 
 版本以 `package.json` 的依赖范围和提交的 `pnpm-lock.yaml` 为准。
@@ -132,8 +133,17 @@ pnpm build
 
 当前结果：
 
-- 测试文件：server 5 个 + client 2 个；
-- 测试用例：**75 passed**（server 68，client 7）。
+- 单元/集成测试：server 5 个 + client 2 个文件，**75 passed**（server 68，client 7）。
+- 浏览器 E2E：1 个 Playwright 测试，独立命令 `pnpm test:e2e`。
+
+E2E（首次需要安装 Playwright Chromium）：
+
+```bash
+pnpm exec playwright install chromium
+pnpm test:e2e
+```
+
+E2E 使用独立端口（前端 5273 / 后端 3101）和临时 SQLite，不污染开发数据库。
 
 单独运行：
 
@@ -251,7 +261,7 @@ curl -i http://localhost:3001/api/qc/<runId>
 | T11 | 按 `runId` 读取完整报告 | ✅ | `api.test.ts`、`persistence.test.ts` |
 | T12 | 真实进程重启后仍能读取 | ✅ | `restart.test.ts`（spawn → kill → restart） |
 | T13 | 连续两份报告互不覆盖 | ✅ | `api.test.ts`、`persistence.test.ts` |
-| T14 | 前端检查、筛选、刷新恢复 | ✅ | 浏览器手工验收；刷新 Network 出现 `GET /api/qc/{runId}` 200 |
+| T14 | 前端检查、筛选、刷新恢复 | ✅ | `pnpm test:e2e`：上传、筛选、刷新 GET、导出、失败清空旧结果 |
 | T15 | README 测试命令可运行 | ✅ | `pnpm test`：75 passed |
 
 ## 加分项
@@ -275,9 +285,11 @@ curl -i http://localhost:3001/api/qc/<runId>
 | D-003 视觉参考 `phibotics.cn` | 用户自主提出 | 形成深色技术风格、紫/橙/薄荷绿状态色与时间轴视觉方向；未复制素材 |
 | D-004 事务内读回报告 | 用户自主提出（代码审查） | POST 响应来自 SQLite 读回结果，避免内存对象与数据库漂移 |
 | D-005 拆分 HTTP 层 | 用户自主提出（代码审查） | service / routes / errorHandler 职责分离，计划书结构落地 |
-| D-006 API 响应运行时校验 | 用户自主提出（代码审查） | 手工类型镜像 + 运行时契约校验，降低字段漂移风险 |
+| D-006 API 响应运行时校验 | 用户自主提出（代码审查） | 运行时契约校验；类型镜像随后由 D-009 的 shared 包替代 |
 | D-007 CSV 导出防公式注入 | 用户自主提出（代码审查） | 危险前缀加 `'`，降低 Excel 公式执行风险 |
 | D-008 测试纳入类型检查 | 用户自主提出（代码审查） | 测试代码也由 `pnpm typecheck` 检查 |
+| D-009 引入 shared workspace 包 | 用户自主提出 | API 类型收敛到 `@skillfactory/shared`，前后端共用一份定义 |
+| D-010 增加 Playwright E2E | 用户自主提出 | 自动覆盖上传、筛选、刷新、导出、失败清空旧结果 |
 
 这三项决策分别约束了后端工具链、依赖安装方式和视觉语言，不是装饰性选择。
 - 正确性如何检查：
@@ -295,16 +307,19 @@ curl -i http://localhost:3001/api/qc/<runId>
 
 ```text
 .
+├── shared/                 # @skillfactory/shared，type-only API 类型
 ├── client/                 # React + TypeScript + Vite
-│   ├── src/api/            # POST / GET 客户端
+│   ├── src/api/            # POST / GET 客户端 + 运行时校验
 │   ├── src/components/     # 上传、统计、表格、筛选、时间轴、导出
-│   ├── src/types/          # API 类型
+│   ├── src/types/          # 从 shared 重导出类型
 │   └── src/utils/          # 格式化与 CSV 导出
 ├── server/                 # Express + TypeScript
 │   ├── src/qc/             # CSV 解析、QC 规则、service、类型、错误码
 │   ├── src/db/             # SQLite schema、连接、repository、init
 │   ├── src/http/           # routes、errorHandler
 │   └── tests/              # 规则、CSV、持久化、API、重启测试
+├── e2e/                    # Playwright 浏览器端到端测试
+├── playwright.config.ts
 ├── docs/
 │   ├── PLAN.md             # 计划书与边界口径
 │   ├── DECISIONS.md        # 用户关键决策
@@ -319,7 +334,7 @@ curl -i http://localhost:3001/api/qc/<runId>
 
 已完成：
 
-- 必做：CSV 解析、四条 QC 规则、SQLite 持久化、三条固定 API、React 页面、All/Valid/Invalid 筛选、刷新恢复、75 个自动化测试；
+- 必做：CSV 解析、四条 QC 规则、SQLite 持久化、三条固定 API、React 页面、All/Valid/Invalid 筛选、刷新恢复、75 个单元/集成测试 + 1 个 Playwright E2E；
 - 加分：B01 时间轴、B02 CSV 导出、B03 额外边界测试。
 
 已知限制：
@@ -327,8 +342,8 @@ curl -i http://localhost:3001/api/qc/<runId>
 - 不做登录、权限、视频播放/解码、报告历史列表、编辑/删除、分页。
 - 重叠检查为 O(n²)，面向题目限定的 ≤100 条记录；不承诺大文件性能。
 - 本地上传未设置文件大小上限；题目限定 ≤100 条，公网部署时应另加 `multer` limits。
-- 前后端 API 类型是手工镜像（没有引入共享包）；客户端增加了运行时响应校验，字段漂移时会在页面报 `INVALID_RESPONSE`。
-- 没有自动化浏览器 E2E；T14 为手工验收，但已记录 Network 请求证据。
+- API 类型通过 `@skillfactory/shared` 共享；客户端仍保留运行时响应校验，字段漂移时会在页面报 `INVALID_RESPONSE`。
+- E2E 首次运行需要 `pnpm exec playwright install chromium`；未安装浏览器时 `pnpm test:e2e` 会失败。
 - 使用 `history.replaceState`，浏览器后退不会回到上一份报告。
 - 404 的 `runId` 会保留在 URL 中，刷新仍显示 404；这是为了保留可复现链接。
 - 未公开的边界口径按 `docs/PLAN.md` 第 6.2 / 6.3 节实现；若评测有不同解释，以题目公开规则为准。

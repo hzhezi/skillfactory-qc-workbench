@@ -21,9 +21,11 @@
 | D-003 | 前端视觉参考 phibotics.cn | 用户自主提出 | 形成深色技术风格、紫/橙/薄荷绿状态色与时间轴视觉方向 | 浏览器验收、设计 token、未复制素材 |
 | D-004 | 事务内写完后读回报告 | 用户自主提出（代码审查） | POST 响应来自 SQLite 读回结果，避免内存对象与数据库漂移 | 持久化/API 测试、75 个测试 |
 | D-005 | 拆分 HTTP 层 | 用户自主提出（代码审查） | `qc/service.ts`、`http/routes.ts`、`http/errorHandler.ts` 落地，职责单一 | API 测试、`pnpm typecheck` |
-| D-006 | API 响应运行时校验 | 用户自主提出（代码审查） | 保留手工类型镜像，增加运行时契约校验，降低字段漂移风险 | `apiValidation.test.ts` 4 个测试 |
+| D-006 | API 响应运行时校验 | 用户自主提出（代码审查） | 先增加运行时契约校验；类型镜像随后由 D-009 的 shared 包替代 | `apiValidation.test.ts` 4 个测试 |
 | D-007 | CSV 导出防公式注入 | 用户自主提出（代码审查） | 以 `= + - @` 开头的文本加 `'` 前缀，降低 Excel 公式执行风险 | `csvExport.test.ts` 3 个测试 |
 | D-008 | 测试纳入类型检查 | 用户自主提出（代码审查） | 新增 `tsconfig.test.json`，`pnpm typecheck` 同时检查测试代码 | `pnpm typecheck`、75 个测试 |
+| D-009 | 引入 shared workspace 包 | 用户自主提出 | API 类型收敛到 `@skillfactory/shared`，前后端共用一份定义 | `pnpm typecheck`、build、75 个测试 |
+| D-010 | 增加 Playwright E2E | 用户自主提出 | 自动覆盖上传、筛选、刷新、导出和失败清空旧结果 | `pnpm test:e2e` 1 passed |
 
 ## D-001 后端语言：TypeScript
 
@@ -131,7 +133,7 @@
 - 日期：2026-10-20
 - 决策来源：用户自主提出（代码审查）
 - 背景：前后端类型是手工镜像；API 客户端原来直接 `as T`，新增字段或错误码时容易漂移。
-- 用户选择：保留手工类型镜像（避免为小项目引入共享包的构建复杂度），在 `client/src/api/qc.ts` 增加运行时解析与校验。
+- 用户选择：在 `client/src/api/qc.ts` 增加运行时解析与校验；当时保留手工镜像，随后 D-009 引入 shared 包，手工镜像已移除。
 - 用户理由：类型错误应在边界处立即暴露，而不是带着错误数据渲染。
 - 验证方式：`client/tests/apiValidation.test.ts` 覆盖合法报告、未知错误码、统计不一致、非法状态；`pnpm typecheck` 通过。
 - 相关文件：`client/src/api/qc.ts`、`client/src/types/qc.ts`
@@ -157,6 +159,29 @@
 - 用户理由：测试代码也需要类型保护，避免测试本身悄悄失效。
 - 验证方式：`pnpm typecheck` 同时检查 src 与 tests；75 个测试通过。
 - 相关文件：`server/tsconfig.test.json`、`client/tsconfig.test.json`、两个 `package.json`
+- 状态：已完成
+
+## D-009 引入 shared workspace 包
+
+- 日期：2026-10-20
+- 决策来源：用户自主提出
+- 背景：client 与 server 各自维护一份 API 类型，新增字段或错误码时可能漂移。
+- 用户选择：新增 `shared/` workspace 包 `@skillfactory/shared`，集中定义 `QcReport`、`QcSegment`、`QcErrorCode` 等类型；client/server 通过 workspace 依赖导入。
+- 用户理由：消除手工类型镜像，让 `tsc` 在两端同时发现契约变化。
+- 实现说明：shared 包只导出类型，不产生运行时代码，因此不需要额外 build；运行时错误码数组仍在各自包内，但通过 `satisfies QcErrorCode[]` 受共享 union 约束。
+- 验证方式：`pnpm typecheck`（shared + client + server + tests）；`pnpm build`；`pnpm test` 75 passed。
+- 相关文件：`shared/`、`client/src/types/qc.ts`、`server/src/qc/types.ts`
+- 状态：已完成
+
+## D-010 增加 Playwright 端到端测试
+
+- 日期：2026-10-20
+- 决策来源：用户自主提出
+- 背景：此前 T14 依赖手工浏览器验收，没有自动化 E2E。
+- 用户选择：引入 Playwright，新增 `pnpm test:e2e`，使用独立后端 3101、前端 5273 和临时 SQLite，不污染开发环境。
+- 用户理由：把上传、筛选、刷新 GET、导出和失败清空旧结果的完整链路自动化。
+- 验证方式：`pnpm test:e2e` 1 passed；覆盖示例 CSV 6/2/4、Invalid 筛选、刷新 GET 200、完整 CSV 导出、缺少表头时旧结果清空。
+- 相关文件：`e2e/workbench.spec.ts`、`playwright.config.ts`
 - 状态：已完成
 
 ## 其他用户输入（非架构决策）

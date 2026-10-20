@@ -17,3 +17,7 @@ server/data/
 # 日志与系统文件
 *.log
 .DS_Store
+# Playwright 产物
+test-results/
+playwright-report/
+blob-report/

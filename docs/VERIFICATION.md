@@ -760,7 +760,7 @@ pnpm build
 pnpm db:init
 
 # 临时端口启动编译后的后端
-PORT=3997 QC_DB_PATH=/tmp/qc-clean2-test.sqlite node server/dist/index.js
+PORT=3997 QC_DB_PATH=/tmp/qc-final-check.sqlite node server/dist/index.js
 curl -s http://127.0.0.1:3997/api/health
 ```
 
@@ -778,10 +778,10 @@ curl -s http://127.0.0.1:3997/api/health
 执行日期：2026-10-20
 
 ```text
-临时目录：/tmp/qc-clean2
+临时目录：/tmp/qc-clean3
 $ pnpm install --frozen-lockfile
 Lockfile is up to date, resolution step is skipped
-Packages: +179
+Packages: +182
 Done
 
 $ pnpm test
@@ -791,17 +791,21 @@ server: 5 files, 68 tests passed
 
 $ pnpm build
 server build: Done
-client build: ✓ built in 269ms
+client build: ✓ built in 330ms
 
 $ pnpm db:init
-[db] initialized /private/tmp/qc-clean2/server/data/qc.sqlite
+[db] initialized /private/tmp/qc-clean3/server/data/qc.sqlite
 
-$ PORT=3997 QC_DB_PATH=/tmp/qc-clean2-test.sqlite node server/dist/index.js
-[server] QC API listening on http://localhost:3998
-[server] SQLite: /tmp/qc-clean-test.sqlite
+$ PORT=3997 QC_DB_PATH=/tmp/qc-final-check.sqlite node server/dist/index.js
+[server] QC API listening on http://localhost:3997
+[server] SQLite: /tmp/qc-final-check.sqlite
 
 $ curl -s http://127.0.0.1:3997/api/health
 {"status":"ok"}
+
+$ pnpm test:e2e
+Running 1 test using 1 worker
+1 passed
 ```
 
 视觉与交互验收：
@@ -818,7 +822,7 @@ $ curl -s http://127.0.0.1:3997/api/health
 ### T01–T15 结论
 
 全部 ✅ 已通过，逐项证据见 `README.md` 的验收清单与 `docs/PLAN.md` 第 12 节。
-T14 为浏览器手工验收；其余场景均有自动化测试或 curl/进程重启证据。
+T14 由 Playwright E2E 覆盖，并保留手工抽查；其余场景均有自动化测试或 curl/进程重启证据。
 
 ### 自己检查时重点看什么
 
@@ -832,7 +836,7 @@ T14 为浏览器手工验收；其余场景均有自动化测试或 curl/进程�
 ### 已知限制（最终）
 
 - 不做报告历史列表、登录、视频播放、编辑/删除、分页。
-- 无自动化浏览器 E2E；T14 手工验收。
+- E2E 首次运行需要 `pnpm exec playwright install chromium`；未安装浏览器时 `pnpm test:e2e` 会失败。
 - 重叠检查 O(n²)，面向 ≤100 条记录。
 - 未公开边界口径按计划书 6.2 / 6.3 实现。
 
@@ -844,7 +848,7 @@ T14 为浏览器手工验收；其余场景均有自动化测试或 curl/进程�
 | --- | --- | --- |
 | `saveReport()` 返回内存对象 | 改为事务内 write → read back → commit，POST 响应来自 SQLite 读回结果 | `persistence.test.ts`、`api.test.ts` |
 | `app.ts` 承担过多职责 | 拆出 `qc/service.ts`、`http/routes.ts`、`http/errorHandler.ts`；`app.ts` 只组合 | 14 个 API 测试、`pnpm typecheck` |
-| 前后端类型手工重复 | 保留手工类型镜像；在 `client/src/api/qc.ts` 增加运行时解析与校验 | `apiValidation.test.ts` 4 个测试 |
+| 前后端类型手工重复 | 增加运行时解析与校验；随后 D-009 引入 shared 包统一类型 | `apiValidation.test.ts` 4 个测试 |
 | CSV 导出公式注入 | 对以 `= + - @ \t \r` 开头的字符串加 `'` 前缀；数值不处理 | `csvExport.test.ts` 3 个测试 |
 | 测试不在 `tsc` 范围 | 新增 `server/tsconfig.test.json`、`client/tsconfig.test.json`，纳入 `pnpm typecheck` | `pnpm typecheck` 同时检查 src + tests |
 | 空白 action 显示 | 表格用 `trim()` 判断显示「（空）」，导出仍用原文 | 代码审查 + 规则测试 |
@@ -864,6 +868,44 @@ server: 5 passed (5), 68 passed (68)
 合计：75 passed
 
 干净副本：pnpm install --frozen-lockfile → typecheck → test → build → db:init 全部通过
-编译后后端：PORT=3997 QC_DB_PATH=/tmp/qc-clean2-test.sqlite node server/dist/index.js
+编译后后端：PORT=3997 QC_DB_PATH=/tmp/qc-final-check.sqlite node server/dist/index.js
 GET /api/health -> {"status":"ok"}
 ```
+
+## v1.2 — 共享类型与 Playwright E2E
+
+### 共享类型
+
+- 新增 `shared/` workspace 包 `@skillfactory/shared`，只导出类型：
+  - `QcErrorCode`、`SegmentStatus`、`SegmentFilter`；
+  - `SegmentBase`、`QcSegment`、`QcReport`。
+- `client/src/types/qc.ts` 与 `server/src/qc/types.ts` 从 shared 重导出，不再各自维护定义。
+- shared 包是 type-only，不需要构建运行时产物；`pnpm build` 仍只构建 client/server。
+- 验证：`pnpm typecheck` 覆盖 shared + client + server + tests；`pnpm test` 75 passed。
+
+### Playwright E2E
+
+- 配置：`playwright.config.ts`。
+- 端口与数据隔离：后端 3101、前端 5273、临时 SQLite（`os.tmpdir()`），不触碰开发中的 3001/5173 和 `server/data/qc.sqlite`。
+- 测试：`e2e/workbench.spec.ts`。
+- 覆盖：
+  1. 上传示例 CSV，统计 6 / 2 / 4；
+  2. Invalid 筛选只显示 4 行，统计不变；
+  3. 筛选状态下导出 CSV，仍是完整 6 条数据；
+  4. 刷新时等待 `GET /api/qc/{runId}` 200，再校验报告恢复；
+  5. 上传缺少表头的 CSV，显示 `MISSING_HEADER`，旧报告和 URL 清空。
+
+### 验证命令与结果
+
+```bash
+pnpm exec playwright install chromium  # 首次
+pnpm test:e2e
+```
+
+```text
+Running 1 test using 1 worker
+✓ 上传、筛选、刷新恢复、导出与失败清空旧结果 (1.1s)
+1 passed (3.2s)
+```
+
+说明：`pnpm test` 仍运行 75 个单元/集成测试；E2E 是独立命令，避免默认测试依赖浏览器。

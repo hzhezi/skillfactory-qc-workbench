@@ -10,7 +10,7 @@ interface ApiErrorBody {
   error?: unknown;
 }
 
-const QC_ERROR_CODES = new Set<string>([
+const QC_ERROR_CODES = new Set<QcErrorCode>([
   "INVALID_RANGE",
   "OUT_OF_BOUNDS",
   "EMPTY_ACTION",
@@ -246,7 +246,7 @@ function parseErrors(value: unknown): QcErrorCode[] {
   if (
     !Array.isArray(value) ||
     !value.every(
-      (item) => typeof item === "string" && QC_ERROR_CODES.has(item),
+      (item) => typeof item === "string" && QC_ERROR_CODES.has(item as QcErrorCode),
     )
   ) {
     throw invalidResponse("errors");

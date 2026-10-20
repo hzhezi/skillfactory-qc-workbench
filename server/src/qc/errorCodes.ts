@@ -4,14 +4,16 @@
  * QC_ERROR_CODES 的数组顺序就是 API 中 errors 的排序顺序：
  * INVALID_RANGE -> OUT_OF_BOUNDS -> EMPTY_ACTION -> OVERLAP。
  */
+import type { QcErrorCode } from "@skillfactory/shared";
+
 export const QC_ERROR_CODES = [
   "INVALID_RANGE",
   "OUT_OF_BOUNDS",
   "EMPTY_ACTION",
   "OVERLAP",
-] as const;
+] as const satisfies readonly QcErrorCode[];
 
-export type QcErrorCode = (typeof QC_ERROR_CODES)[number];
+export type { QcErrorCode } from "@skillfactory/shared";
 
 /**
  * 文件级 / 请求级错误。HTTP 层会将它们映射为 400。
