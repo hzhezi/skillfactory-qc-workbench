@@ -14,10 +14,10 @@
 
 - ✅ **已确认**：用户已明确拍板，记录在 `docs/DECISIONS.md`。
 - 📌 **需求强制**：来自题目要求，不能自行更改。
-- 💡 **AI 建议（待确认）**：计划采用的默认方案，需用户在评审时确认或修改；确认后才写入决策记录。
-- ⚠️ **边界口径（待确认）**：题目未完全明确的细节，先按建议执行，验收前需用户确认。
+- 💡 **AI 建议（已实现，非用户决策）**：计划采用并最终实现的默认方案，不写入用户决策记录。
+- ⚠️ **边界口径（项目采用，非用户决策）**：题目未完全明确的细节，按项目口径实现并测试。
 
-本计划中的技术方案除已确认项外，均不视为用户决策。
+本计划中的技术方案除已确认项外，均不视为用户决策；最终实现状态见第 15 节。
 
 ## 1. 目标与范围
 
@@ -37,7 +37,7 @@
 - 不做报告编辑、删除、分页、完整历史列表（除非后续明确加）。
 - 不用静态 Mock、内存数据或浏览器本地存储冒充后端与数据库。
 
-### 1.3 加分项（💡 建议全做，待确认）
+### 1.3 加分项（已全做）
 
 - B01 时间轴可视化（2 分）
 - B02 导出当前完整报告 CSV（2 分）
@@ -48,21 +48,21 @@
 | 层 | 选择 | 状态 | 理由 |
 | --- | --- | --- | --- |
 | 前端框架 | React + TypeScript | 📌 需求强制 | 题目硬性要求 |
-| 前端构建 | Vite | 💡 待确认 | 启动快、配置少，适合单页应用 |
-| 前端样式 | 手写 CSS；深色技术风格，参考 phibotics.cn | 💡 待确认 | 不引入额外 UI 依赖，信息密度可控 |
+| 前端构建 | Vite | ✅ 已实现（AI 默认） | 启动快、配置少，适合单页应用 |
+| 前端样式 | 手写 CSS；深色技术风格，参考 phibotics.cn | ✅ 已实现（AI 默认） | 不引入额外 UI 依赖，信息密度可控 |
 | 后端语言 | TypeScript | ✅ D-001 | 与前端统一语言 |
-| 后端运行时 | Node.js 24（本机 24.14.1） | 💡 待确认 | 与 TS 生态一致，环境已验证 |
-| 后端框架 | Express 5 | 💡 待确认 | 路由与中间件简单，multipart 方案成熟 |
+| 后端运行时 | Node.js 24（本机 24.14.1） | ✅ 已实现（AI 默认） | 与 TS 生态一致，环境已验证 |
+| 后端框架 | Express 5 | ✅ 已实现（AI 默认） | 路由与中间件简单，multipart 方案成熟 |
 | 包管理器 | pnpm（本机 11.7.0） | ✅ D-002 | 依赖隔离严格、workspace 安装效率高 |
-| 工程结构 | pnpm workspace：`client` + `server` | 💡 待确认 | 前后端同仓，脚本统一 |
-| 开发联调 | Vite proxy `/api` → `http://localhost:3001` | 💡 待确认 | 开发期不需要 CORS |
-| 端口 | 前端 5173，后端 3001 | 💡 待确认 | Vite 默认端口 + 固定后端端口，写入 README |
-| CSV 解析 | `csv-parse` | 💡 待确认 | 正确处理 BOM、引号、逗号、转义引号、换行 |
-| multipart | `multer`（memoryStorage） | 💡 待确认 | 与 Express 集成简单 |
-| SQLite 访问 | `better-sqlite3` + 原生 SQL | 💡 待确认 | 同步 API、事务直观、依赖少 |
-| 报告 ID | `qc-${crypto.randomUUID()}` | 💡 待确认 | 非空、唯一、URL 安全 |
-| 测试 | Vitest + Supertest + 临时 SQLite 文件 | 💡 待确认 | 与 Vite/TS 生态一致，可测 HTTP 层 |
-| 类型检查 | `tsc --noEmit`，strict | 💡 待确认 | 提前发现类型问题 |
+| 工程结构 | pnpm workspace：`client` + `server` | ✅ 已实现（AI 默认） | 前后端同仓，脚本统一 |
+| 开发联调 | Vite proxy `/api` → `http://localhost:3001` | ✅ 已实现（AI 默认） | 开发期不需要 CORS |
+| 端口 | 前端 5173，后端 3001 | ✅ 已实现（AI 默认） | Vite 默认端口 + 固定后端端口，写入 README |
+| CSV 解析 | `csv-parse` | ✅ 已实现（AI 默认） | 正确处理 BOM、引号、逗号、转义引号、换行 |
+| multipart | `multer`（memoryStorage） | ✅ 已实现（AI 默认） | 与 Express 集成简单 |
+| SQLite 访问 | `better-sqlite3` + 原生 SQL | ✅ 已实现（AI 默认） | 同步 API、事务直观、依赖少 |
+| 报告 ID | `qc-${crypto.randomUUID()}` | ✅ 已实现（AI 默认） | 非空、唯一、URL 安全 |
+| 测试 | Vitest + Supertest + 临时 SQLite 文件 | ✅ 已实现（AI 默认） | 与 Vite/TS 生态一致，可测 HTTP 层 |
+| 类型检查 | `tsc --noEmit`，strict | ✅ 已实现（AI 默认） | 提前发现类型问题 |
 
 > 依赖版本在安装时锁定，提交 `pnpm-lock.yaml`；README 记录实际版本。
 
@@ -288,7 +288,7 @@ CREATE INDEX IF NOT EXISTS idx_qc_segments_run_id
 9. `start_ms`、`end_ms` 去掉首尾空白后按十进制整数解析；失败则为 `null` 并产生 `INVALID_RANGE`。
 10. 按数据记录顺序生成 `rowIndex`（从 1 开始）。
 
-### 6.2 边界口径（⚠️ 待确认）
+### 6.2 边界口径（项目采用，AI 默认）
 
 | 场景 | 建议处理 |
 | --- | --- |
@@ -507,7 +507,7 @@ runId: string | null   // 来自 URL query
 - 保留工具界面的信息密度，不照搬官网的营销长页、视频背景和 3D 机器人素材。
 - 用细边框、网格背景和编号标签营造「技术工作台」感。
 
-**色彩 token（💡 待确认）**
+**色彩 token（已实现）**
 
 | Token | 建议值 | 用途 |
 | --- | --- | --- |
@@ -859,22 +859,29 @@ runId: string | null   // 来自 URL query
 | 端口被占用 | 启动失败 | README 写明端口；`PORT` 环境变量可覆盖（建议） |
 | 时间显示时区 | 用户误解 | API 返回 UTC ISO；前端只做本地化展示，不改变存储 |
 
-## 15. 待用户确认的决策点
+## 15. 计划阶段的候选与最终处理
 
-以下事项是计划阶段的待确认项。最终只有 D-001～D-003 是用户明确拍板的决策；其余按 AI 默认方案实现，不写入用户决策记录：
+计划阶段列出的技术候选，最终处理如下：
 
-1. 后端运行时与框架：Node.js 24 + Express 5（💡）
-2. 工程结构：pnpm workspace + Vite proxy（💡）
-3. CSV 解析：`csv-parse`（💡）
-4. SQLite 访问：`better-sqlite3` + 原生 SQL（💡）
-5. 报告 ID：`qc-<uuid>`（💡）
-6. DB 路径与初始化：`server/data/qc.sqlite` + 启动自动建表 + `pnpm db:init`（💡）
-7. 前端刷新恢复：URL `?runId=`（💡）
-8. UI：手写 CSS + 中文界面 + 深色技术风格（参考 phibotics.cn）（💡）
-9. 加分项：B01 / B02 / B03 全做（💡）
-10. 测试：Vitest + Supertest + 临时 DB（💡）
-11. 第 6.2 节边界口径（⚠️）
-12. 第 13.2 节设计主张（💡）
+- **用户明确决策**：D-001 TypeScript、D-002 pnpm、D-003 视觉参考。
+- **其余事项**：由 AI 默认实现并通过测试，属于实现选择，不写入用户决策记录。
+
+| 事项 | 最终处理 | 状态 |
+| --- | --- | --- |
+| 后端运行时与框架 | Node.js 24 + Express 5 | 已实现 |
+| 工程结构 | pnpm workspace + Vite proxy | 已实现 |
+| CSV 解析 | `csv-parse` + 自定义表头/列数校验 | 已实现 |
+| SQLite 访问 | `better-sqlite3` + 原生 SQL | 已实现 |
+| 报告 ID | `qc-<uuid>` | 已实现 |
+| DB 路径与初始化 | `server/data/qc.sqlite` + 自动建表 + `pnpm db:init` | 已实现 |
+| 前端刷新恢复 | URL `?runId=` | 已实现 |
+| UI | 手写 CSS + 中文界面 + 深色技术风格 | 已实现 |
+| 加分项 | B01 / B02 / B03 全做 | 已实现 |
+| 测试 | Vitest + Supertest + 临时 DB | 已实现 |
+| 边界口径 | 第 6.2 / 6.3 节 | 已实现并测试 |
+| 设计主张 | 第 13.2 节 | 已落地 |
+
+详细区分见 `docs/DECISIONS.md`：D-001～D-003 是用户决策，其余是 AI 默认实现。
 
 ## 16. 计划变更记录
 

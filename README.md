@@ -265,9 +265,14 @@ curl -i http://localhost:3001/api/qc/<runId>
 - 使用工具：OpenCode CLI（模型 `deepseek-flash`）、pnpm、Vitest、Supertest、Chrome DevTools MCP。
 - AI 生成范围：工程骨架、后端 CSV/QC/持久化/API、前端页面与样式、测试、文档草稿。
 - 用户参与的关键选择（详见 `docs/DECISIONS.md`）：
-  - **D-001** 后端使用 TypeScript（用户确认候选方案）；
-  - **D-002** 包管理器使用 pnpm（用户将 AI 建议的 npm 改为 pnpm）；
-  - **D-003** 前端视觉参考 `phibotics.cn`（用户指定），只借鉴深色技术风格，未复制 logo、图片、文案或字体文件。
+
+| 决策 | 来源 | 对交付的实际影响 |
+| --- | --- | --- |
+| D-001 后端使用 TypeScript | 用户确认候选方案 | 前后端统一语言与类型检查，降低双技术栈联调成本 |
+| D-002 包管理器改用 pnpm | 用户自主提出 | 严格依赖隔离 + workspace 安装效率；README 明确 pnpm 环境 |
+| D-003 视觉参考 `phibotics.cn` | 用户自主提出 | 形成深色技术风格、紫/橙/薄荷绿状态色与时间轴视觉方向；未复制素材 |
+
+这三项决策分别约束了后端工具链、依赖安装方式和视觉语言，不是装饰性选择。
 - 正确性如何检查：
   - `pnpm typecheck`、`pnpm build`；
   - `pnpm test`：70 个测试，含 QC 规则、持久化、API 契约、真实进程重启；
