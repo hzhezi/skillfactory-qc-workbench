@@ -34,6 +34,7 @@
 | --- | --- | --- | --- | --- | --- | --- | --- |
 | P-001 | 2026-10-20 | 环境 / 依赖安装 | `pnpm install` 拒绝执行 esbuild 安装脚本 | pnpm 11 默认阻止依赖 postinstall；esbuild 需要运行 `install.js` 获取平台二进制；`package.json` 的 `pnpm` 字段已不再读取 | 执行 `pnpm approve-builds --all`，并在 `pnpm-workspace.yaml` 写入 `allowBuilds` | `pnpm install` 成功；`pnpm build` 中 Vite 正常构建 | 已解决 |
 | P-002 | 2026-10-20 | 类型检查 / 构建 | server 的 `tsc` 报 `TS5108`，无法识别 `moduleResolution=node10` | 安装到 TypeScript 7.0.2，该版本移除了旧的 `node10` resolution | 将 `server/tsconfig.json` 改为 `module: Node16` + `moduleResolution: Node16` | `pnpm typecheck`、`pnpm build` 均通过 | 已解决 |
+| P-003 | 2026-10-20 | CSV 解析 | 前导空白行导致合法表头被误判为 `INVALID_CSV` | `csv-parse` 在 `relax_column_count: false` 时把首条空白记录当成列数基准 | 改为 `relax_column_count: true`，过滤空白行后手动校验数据行列数 | `pnpm test` 42 个测试全部通过 | 已解决 |
 
 ### P-001 pnpm 11 忽略 esbuild 安装脚本
 
@@ -69,4 +70,21 @@
 - 解决方案：将 `server/tsconfig.json` 改为 `"module": "Node16"`、`"moduleResolution": "Node16"`，保持 CommonJS 输出语义。
 - 验证方式：`pnpm typecheck` 两个 workspace 均 `Done`；`pnpm build` 两个 workspace 均 `Done`。
 - 相关文件：`server/tsconfig.json:5`
+- 状态：已解决
+
+### P-003 csv-parse 把前导空白行当作列数基准
+
+- 日期：2026-10-20
+- 阶段：CSV 解析
+- 问题现象：测试「忽略前导、中间和末尾的空白行」失败，合法表头被判定为结构错误。
+- 报错信息：
+
+  ```text
+  QcInputError: CSV 结构错误：Invalid Record Length: expect 1, got 4 on line 3
+  ```
+
+- 根因：`csv-parse` 在 `relax_column_count: false` 且未设置 `columns` 时，会用第一条记录（这里是仅含空格的 `"  "` 行）推定列数；随后 4 列的表头就被认为列数不一致。原计划是在解析后过滤空白行，但解析器在过滤前已经抛错。
+- 解决方案：将 `relax_column_count` 改为 `true`，让解析器先产出记录；过滤空白行后，再用表头长度手动校验每条数据行，仍然保留「列数不一致 → `INVALID_CSV`」的行为。
+- 验证方式：`pnpm --filter server test` 中 `csv.test.ts` 29 个测试全部通过；`pnpm test` 共 42 个测试通过。
+- 相关文件：`server/src/qc/csv.ts`、`server/tests/csv.test.ts`
 - 状态：已解决
