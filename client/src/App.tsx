@@ -1,11 +1,13 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { ApiError, createQcReport, getQcReport } from "./api/qc";
 import { EmptyState } from "./components/EmptyState";
+import { ExportButton } from "./components/ExportButton";
 import { ErrorBanner } from "./components/ErrorBanner";
 import { FilterBar } from "./components/FilterBar";
 import { LoadingPanel } from "./components/LoadingPanel";
 import { ReportMeta } from "./components/ReportMeta";
 import { SegmentTable } from "./components/SegmentTable";
+import { SegmentTimeline } from "./components/SegmentTimeline";
 import { SummaryStats } from "./components/SummaryStats";
 import { UploadForm } from "./components/UploadForm";
 import type { QcReport, SegmentFilter } from "./types/qc";
@@ -230,6 +232,14 @@ export default function App() {
               <div className="report-stack">
                 <ReportMeta report={report} />
                 <SummaryStats report={report} />
+                <SegmentTimeline report={report} />
+
+                <div className="report-actions">
+                  <span className="report-actions-note">
+                    导出包含全部 Segment，不受当前筛选影响
+                  </span>
+                  <ExportButton report={report} />
+                </div>
 
                 <section
                   className="panel segments-panel"

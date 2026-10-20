@@ -620,3 +620,97 @@ GET /api/qc/qc-b9a725ce-...             200
 - 使用 `replaceState`，浏览器后退不会回到上一份报告；题目不要求历史列表。
 - 404 的 runId 会保留在 URL 中，刷新仍会显示 404；这是为了保留可复现的链接。
 - 还没有时间轴和 CSV 导出；Phase 6 补齐。
+
+## Phase 6 — 加分项（B01 / B02 / B03）
+
+### 设计原理
+
+1. **B01 时间轴**
+   - 以 `durationMs` 为横轴比例；有效条薄荷绿，无效/越界条橙色。
+   - 时间无法解析或 `end <= start` 的 Segment 不画条，只统计为「无法定位」。
+   - 越界片段仍可定位，但右端截断并用虚线标记。
+   - 时间轴是视觉辅助，详细数据仍以表格为准。
+2. **B02 CSV 导出**
+   - 导出函数直接接收完整 `report`，不接收筛选状态；因此筛选 Invalid 时仍导出全部 Segment。
+   - 所有字段经过 CSV 转义：逗号、双引号、换行都会被正确包裹。
+   - 文件带 UTF-8 BOM，方便 Excel 正确识别中文。
+   - 文件名使用 `qc-report-<runId>.csv`。
+3. **B03 额外边界测试**
+   - 题目要求至少两个额外边界测试；本项目已有多个，并且都用真实业务断言。
+   - 额外覆盖：完全包含/乱序、多错误组合、重启后读取、重复 ID、带引号 CSV、事务回滚。
+
+### 验证命令
+
+```bash
+# server + client 全部测试
+pnpm test
+
+# 单独验证导出逻辑
+pnpm --filter client test
+
+# 构建
+pnpm build
+```
+
+浏览器手工验证：
+
+1. 上传示例 CSV，确认时间轴出现 6 条记录，s4 超出 10000ms 的右端被截断。
+2. 点击 `Invalid`，表格只剩 4 条。
+3. 点击「导出 CSV」。
+4. 打开下载文件，确认仍有 6 条 Segment（不受筛选影响），并带 BOM。
+
+### 预期结果
+
+- 时间轴：s1/s6 绿色；s2/s3/s4/s5 橙色；s4 右端有截断标记。
+- 导出文件列：`rowIndex,segmentId,startMs,endMs,action,status,errors`。
+- 导出 6 行数据 + 1 行表头；`errors` 用 `|` 连接；空时间为空字符串。
+- 文件以 `EF BB BF`（UTF-8 BOM）开头。
+
+### 实际证据
+
+执行日期：2026-10-20
+
+```text
+$ pnpm test
+client test: 1 passed (1), 2 passed (2)
+server test: 5 passed (5), 68 passed (68)
+合计：70 个测试通过
+```
+
+浏览器与下载文件实测：
+
+```text
+时间轴：6 条 bar；s1/s6 绿色；s2/s3/s4/s5 橙色；s4 右端截断。
+筛选 Invalid 后导出 qc-report-qc-9bd7773d-....csv
+BOM: True
+行数: 7（1 表头 + 6 数据）
+数据行: s1 VALID, s2 OVERLAP, s3 OVERLAP, s4 OUT_OF_BOUNDS,
+        s5 EMPTY_ACTION, s6 VALID
+```
+
+### B03 测试映射
+
+| 额外边界 | 测试位置 |
+| --- | --- |
+| 完全包含 + 乱序 | `server/tests/qc.rules.test.ts` —「完全包含且输入乱序时…」 |
+| 多错误组合 | `server/tests/qc.rules.test.ts` —「多错误按固定顺序排列…」 |
+| 重启后读取 | `server/tests/restart.test.ts` —「同一 SQLite 文件重启后…」 |
+| 重复 segment_id | `server/tests/persistence.test.ts`、`server/tests/api.test.ts` |
+| 带引号/逗号 CSV | `server/tests/csv.test.ts` —「支持引用字段内的逗号和转义双引号」 |
+| 事务回滚 | `server/tests/persistence.test.ts` —「事务中途失败时回滚…」 |
+| 导出转义 | `client/tests/csvExport.test.ts` |
+
+### 自己检查时重点看什么
+
+1. 时间轴比例是否与 `start_ms / durationMs` 一致，而不是简单地等宽排列。
+2. 越界片段是否仍显示，并在右端有截断标记。
+3. 切换筛选后导出，文件行数是否仍等于 `total`。
+4. `action` 中含逗号/引号/换行时，CSV 是否仍可被正确解析。
+5. 下载文件是否带 BOM。
+6. B03 的每个额外边界是否都有对应测试名称。
+
+### 已知限制（Phase 6）
+
+- 时间轴不绘制时间无法解析的 Segment，只用文字提示数量。
+- 导出是纯前端生成，不调用后端；数据来自当前 GET/POST 响应。
+- 没有实现报告历史列表（题目不属于加分项）。
