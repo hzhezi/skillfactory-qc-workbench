@@ -48,6 +48,35 @@ body {
     var(--bg);
 }
 
+/*
+ * 跟随鼠标的柔光。点在 .app-shell 的 stacking context 内用负 z-index，
+ * 因此位于所有内容之下、body 背景之上；transform 由 App.tsx 的 rAF 更新。
+ */
+.pointer-glow {
+  position: fixed;
+  top: 0;
+  left: 0;
+  z-index: -1;
+  width: 180px;
+  height: 180px;
+  margin: -90px 0 0 -90px;
+  border-radius: 50%;
+  background:
+    radial-gradient(circle, rgba(255, 255, 255, 0.072) 0%, transparent 30%),
+    radial-gradient(
+      circle,
+      rgba(139, 77, 255, 0.192) 0%,
+      rgba(139, 77, 255, 0.06) 42%,
+      transparent 70%
+    );
+  filter: blur(22px);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 400ms ease;
+  will-change: transform;
+  mix-blend-mode: screen;
+}
+
 /* 极淡工程网格：只提供空间感，不遮挡文字。 */
 body::before {
   position: fixed;
@@ -765,11 +794,48 @@ h2 {
   display: flex;
   flex-wrap: wrap;
   gap: 12px 28px;
-  padding: 24px 0 32px;
+  /* 给左下角固定的 GitHub 入口留出空间，避免滚到页脚时遮挡文字。 */
+  padding: 24px 0 32px 64px;
   border-top: 1px solid var(--line);
   color: var(--text-muted);
   font-size: 12px;
   letter-spacing: 0.06em;
+}
+
+/* 固定在视口左下角的源码入口，不参与文档流。 */
+.github-link {
+  position: fixed;
+  left: 24px;
+  bottom: 24px;
+  z-index: 2;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 42px;
+  height: 42px;
+  border: 1px solid var(--line-strong);
+  border-radius: 50%;
+  background: rgba(15, 15, 15, 0.86);
+  color: var(--text-soft);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.35);
+  backdrop-filter: blur(12px);
+  transition:
+    border-color 160ms ease,
+    background 160ms ease,
+    color 160ms ease,
+    transform 160ms ease;
+}
+
+.github-link:hover {
+  border-color: var(--accent);
+  background: var(--panel-raised);
+  color: var(--text);
+  transform: translateY(-2px);
+}
+
+.github-link svg {
+  width: 20px;
+  height: 20px;
 }
 
 .sr-only {
@@ -1026,6 +1092,13 @@ h2 {
     width: min(100% - 32px, 1360px);
   }
 
+  .github-link {
+    left: 16px;
+    bottom: 16px;
+    width: 38px;
+    height: 38px;
+  }
+
   .topbar {
     align-items: flex-start;
     flex-direction: column;
@@ -1101,7 +1174,17 @@ h2 {
   }
 }
 
+@media (hover: none) {
+  .pointer-glow {
+    display: none;
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
+  .pointer-glow {
+    display: none;
+  }
+
   *,
   *::before,
   *::after {
