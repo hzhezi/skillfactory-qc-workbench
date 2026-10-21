@@ -178,14 +178,6 @@ h1 {
   font-size: clamp(38px, 5vw, 58px);
 }
 
-.lede {
-  max-width: 620px;
-  margin: 24px 0 0;
-  color: var(--text-muted);
-  font-size: 15px;
-  line-height: 1.9;
-}
-
 .workbench {
   display: grid;
   grid-template-columns: minmax(300px, 360px) minmax(0, 1fr);
@@ -222,13 +214,6 @@ h2 {
   font-size: clamp(22px, 2.4vw, 28px);
   font-weight: 600;
   letter-spacing: 0.01em;
-}
-
-.panel-note {
-  margin: 12px 0 0;
-  color: var(--text-muted);
-  font-size: 13px;
-  line-height: 1.8;
 }
 
 .upload-form {
@@ -367,13 +352,6 @@ h2 {
   line-height: 1.6;
 }
 
-.form-note {
-  margin: 0;
-  color: var(--text-muted);
-  font-size: 12px;
-  line-height: 1.7;
-}
-
 .results {
   min-width: 0;
 }
@@ -394,24 +372,6 @@ h2 {
   align-items: flex-start;
   justify-content: space-between;
   gap: 20px;
-}
-
-.saved-badge {
-  display: inline-flex;
-  align-items: center;
-  gap: 7px;
-  color: var(--text-muted);
-  font-size: 11px;
-  letter-spacing: 0.06em;
-  white-space: nowrap;
-}
-
-.saved-dot {
-  width: 6px;
-  height: 6px;
-  border-radius: 50%;
-  background: var(--valid);
-  box-shadow: 0 0 10px rgba(127, 224, 195, 0.6);
 }
 
 .meta-grid {
@@ -764,44 +724,6 @@ h2 {
   background: rgba(255, 255, 255, 0.018);
 }
 
-.empty-state h2 {
-  margin-bottom: 12px;
-}
-
-.empty-state > p:not(.panel-label) {
-  max-width: 520px;
-  margin: 0;
-  color: var(--text-muted);
-  font-size: 14px;
-  line-height: 1.8;
-}
-
-.empty-steps {
-  display: grid;
-  gap: 8px;
-  margin: 24px 0 0;
-  padding-left: 20px;
-  color: var(--text-soft);
-  font-size: 13px;
-  line-height: 1.7;
-}
-
-.empty-steps li::marker {
-  color: var(--accent);
-}
-
-.footer {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 12px 28px;
-  /* 给左下角固定的 GitHub 入口留出空间，避免滚到页脚时遮挡文字。 */
-  padding: 24px 0 32px 64px;
-  border-top: 1px solid var(--line);
-  color: var(--text-muted);
-  font-size: 12px;
-  letter-spacing: 0.06em;
-}
-
 /* 固定在视口左下角的源码入口，不参与文档流。 */
 .github-link {
   position: fixed;
@@ -873,11 +795,6 @@ h2 {
   align-items: center;
   justify-content: flex-end;
   gap: 14px;
-}
-
-.report-actions-note {
-  color: var(--text-muted);
-  font-size: 12px;
 }
 
 .secondary-button {
@@ -1060,13 +977,6 @@ h2 {
   margin: 22px 0 0;
   color: var(--text-muted);
   font-size: 13px;
-}
-
-.timeline-note {
-  margin: 16px 0 0;
-  color: var(--text-muted);
-  font-size: 11px;
-  line-height: 1.7;
 }
 
 @media (max-width: 1023px) {

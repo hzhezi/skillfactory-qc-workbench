@@ -222,19 +222,12 @@ export default function App() {
             <br />
             质量检查
           </h1>
-          <p className="lede">
-            上传分段 CSV，检查时间范围、视频边界、动作名称与片段重叠。
-            报告写入本地 SQLite，可凭 runId 重新读取。
-          </p>
         </section>
 
         <div className="workbench">
           <aside className="panel upload-panel" aria-labelledby="upload-title">
             <p className="panel-label">01 · INPUT</p>
             <h2 id="upload-title">上传分段 CSV</h2>
-            <p className="panel-note">
-              必需列：segment_id、start_ms、end_ms、action。列顺序可调整，允许额外列。
-            </p>
             <UploadForm
               loading={isLoading}
               onAttempt={handleAttempt}
@@ -266,9 +259,6 @@ export default function App() {
                 <SegmentTimeline report={report} />
 
                 <div className="report-actions">
-                  <span className="report-actions-note">
-                    导出包含全部 Segment，不受当前筛选影响
-                  </span>
                   <ExportButton report={report} />
                 </div>
 
@@ -297,13 +287,6 @@ export default function App() {
           </section>
         </div>
       </main>
-
-      <footer className="footer">
-        <span>React + TypeScript</span>
-        <span>Node.js + Express</span>
-        <span>SQLite</span>
-        <span>本地运行 · 端口 5173 / 3001</span>
-      </footer>
 
       {/* 固定在左下角的源码入口；新窗口打开，避免离开当前 QC 结果。 */}
       <a

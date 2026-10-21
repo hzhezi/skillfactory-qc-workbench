@@ -27,7 +27,6 @@ function isPlaceable(segment: QcSegment): segment is PlaceableSegment {
 
 export function SegmentTimeline({ report }: SegmentTimelineProps) {
   const placeable = report.segments.filter(isPlaceable);
-  const unavailableCount = report.segments.length - placeable.length;
 
   return (
     <section className="panel timeline-panel" aria-labelledby="timeline-title">
@@ -124,12 +123,6 @@ export function SegmentTimeline({ report }: SegmentTimelineProps) {
           </div>
         </div>
       )}
-
-      {unavailableCount > 0 ? (
-        <p className="timeline-note">
-          另有 {unavailableCount} 条时间无法解析或范围非法，未在时间轴定位。
-        </p>
-      ) : null}
     </section>
   );
 }

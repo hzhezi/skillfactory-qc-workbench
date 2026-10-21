@@ -119,10 +119,6 @@ export function UploadForm({ loading, onAttempt, onSubmit }: UploadFormProps) {
       <button className="primary-button" type="submit" disabled={loading}>
         {loading ? "检查中…" : "开始检查"}
       </button>
-
-      <p className="form-note">
-        后端会解析 CSV、执行四条 QC 规则，并把报告写入本地 SQLite。
-      </p>
     </form>
   );
 }

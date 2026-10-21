@@ -34,10 +34,6 @@ export function ReportMeta({ report }: ReportMetaProps) {
           <p className="panel-label">02 · REPORT</p>
           <h2 id="report-title">QC 报告</h2>
         </div>
-        <span className="saved-badge">
-          <span className="saved-dot" aria-hidden="true" />
-          已写入 SQLite
-        </span>
       </div>
 
       <div className="meta-grid">
