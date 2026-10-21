@@ -37,7 +37,8 @@
 - pnpm **11.x**。
 - 首次安装 `better-sqlite3` 可能需要本机编译工具：
   - macOS：Xcode Command Line Tools；
-  - Linux：`python3`、`make`、`g++`。
+  - Linux：`python3`、`make`、`g++`；
+  - Windows：Visual Studio Build Tools（勾选“使用 C++ 的桌面开发”）和 Python 3（仅在无可用预编译包时需要）。
 - 不使用 Docker。题目不要求容器化，本地 Node + SQLite 文件即可运行。
 
 如果本机没有 pnpm：
@@ -84,7 +85,7 @@ sqlite3 server/data/qc.sqlite ".tables"
 # qc_runs     qc_segments
 ```
 
-可选环境变量：
+可选环境变量（以下为 macOS / Linux 写法，Windows 见「启动 → Windows（PowerShell）」）：
 
 ```bash
 QC_DB_PATH=/tmp/qc.sqlite pnpm dev
@@ -121,6 +122,38 @@ pnpm --filter server start
 ```
 
 `pnpm build` 会生成 `client/dist` 与 `server/dist`。本地验收建议使用 `pnpm dev`，因为 Vite 开发代理负责把 `/api` 转发到 3001。
+
+### Windows（PowerShell）
+
+Windows 10/11 使用与上面相同的 `pnpm dev` 流程，首次配置如下：
+
+1. 安装 Node.js >= 22：从 <https://nodejs.org/> 下载安装包，或执行 `winget install OpenJS.NodeJS.LTS`。
+2. 启用 pnpm：
+
+   ```powershell
+   corepack enable
+   # 如 corepack 不可用：
+   npm install -g pnpm@11.7.0
+   ```
+
+3. 安装依赖并启动：
+
+   ```powershell
+   cd skillfactory-qc-workbench
+   pnpm install
+   pnpm dev
+   ```
+
+如果安装 `better-sqlite3` 时提示缺少编译工具，请安装 Visual Studio Build Tools（勾选“使用 C++ 的桌面开发”）和 Python 3，然后重新执行 `pnpm install`。
+
+Windows 下设置数据库路径：
+
+```powershell
+$env:QC_DB_PATH = "C:\temp\qc.sqlite"
+pnpm dev
+```
+
+Windows 默认不带 `sqlite3` 命令，可用 [DB Browser for SQLite](https://sqlitebrowser.org/) 查看数据库。PowerShell 中执行文中的 `curl` 示例时请使用 `curl.exe`，避免与 `Invoke-WebRequest` 别名混淆。
 
 ## 测试
 
