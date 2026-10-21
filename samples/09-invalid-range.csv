@@ -1,0 +1,6 @@
+segment_id,start_ms,end_ms,action
+bad-text,abc,2000,Pick
+bad-decimal,0,1.5,Pick
+zero-length,2000,2000,Pick
+negative-start,-5,1000,Pick
+empty-start,,1000,Pick

@@ -1,0 +1,3 @@
+﻿segment_id,start_ms,end_ms,action
+bom1,0,1000,Pick
+bom2,1000,2000,Place

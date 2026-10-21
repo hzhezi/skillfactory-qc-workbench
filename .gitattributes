@@ -1,0 +1,2 @@
+# 仅用于验证 CRLF 解析，禁止 Git 归一化该文件的换行符。
+samples/12-bom-crlf.csv -text whitespace=cr-at-eol

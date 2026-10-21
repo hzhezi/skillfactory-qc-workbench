@@ -1,0 +1,3 @@
+action,end_ms,segment_id,start_ms,note
+Pick,2000,s1,0,hello
+Place,4000,s2,2000,world

@@ -276,6 +276,27 @@ curl -i http://localhost:3001/api/qc/<runId>
 - B01 时间轴按比例展示片段位置，有效/无效用颜色区分，越界片段截断标记；
 - B02 导出完整报告 CSV，不受筛选影响，带 UTF-8 BOM；对以 `= + - @` 开头的文本加 `'` 前缀，降低 Excel 公式注入风险。
 
+## 页面测试数据
+
+`samples/` 提供可直接在页面上传的 CSV，覆盖正常流程、QC 边界和文件级错误。完整说明与预期错误码见 [samples/README.md](samples/README.md)。
+
+| 文件 | `durationMs` | 预期结果 |
+| --- | ---: | --- |
+| `01-official-example.csv` | 10000 | 6 条，2 valid / 4 invalid；`OVERLAP`、`OUT_OF_BOUNDS`、`EMPTY_ACTION` |
+| `02-touching-boundaries.csv` | 10000 | 3 条全部 valid；首尾相接不重叠 |
+| `03-contained-unordered.csv` | 10000 | 3 条，1 valid / 2 invalid；完全包含且双方标记 |
+| `04-multi-errors.csv` | 10000 | 6 条，1 valid / 5 invalid；多错误组合 |
+| `05-quoted-duplicate-ids.csv` | 5000 | 2 条全部 valid；重复 ID、引号内逗号、转义双引号 |
+| `06-reordered-extra-columns.csv` | 5000 | 2 条全部 valid；列顺序调整、额外列 |
+| `07-missing-header.csv` | 10000 | `400 MISSING_HEADER` |
+| `08-header-only.csv` | 10000 | `400 NO_RECORDS` |
+| `09-invalid-range.csv` | 10000 | 5 条全部 invalid；均为 `INVALID_RANGE` |
+| `10-empty.csv` | 10000 | `400 EMPTY_FILE` |
+| `11-unclosed-quote.csv` | 10000 | `400 INVALID_CSV` |
+| `12-bom-crlf.csv` | 5000 | 2 条全部 valid；UTF-8 BOM + CRLF |
+
+文件级错误（`07`、`08`、`10`、`11`）不会创建报告。非法时长不需要文件，直接在页面输入 `0`、`-1`、`1.5`、`abc` 或留空即可验证 `INVALID_DURATION`。
+
 ## 验收清单（T01–T15）
 
 验证日期：2026-10-20。
@@ -295,7 +316,7 @@ curl -i http://localhost:3001/api/qc/<runId>
 | T11 | 按 `runId` 读取完整报告 | ✅ | `api.test.ts`、`persistence.test.ts` |
 | T12 | 真实进程重启后仍能读取 | ✅ | `restart.test.ts`（spawn → kill → restart） |
 | T13 | 连续两份报告互不覆盖 | ✅ | `api.test.ts`、`persistence.test.ts` |
-| T14 | 前端检查、筛选、刷新恢复 | ✅ | `pnpm test:e2e`：上传、筛选、刷新 GET、导出、失败清空旧结果 |
+| T14 | 前端检查、筛选、刷新恢复 | ✅ | `pnpm test:e2e`：上传、筛选、刷新 GET、导出、失败清空旧结果；页面手工数据见 `samples/` |
 | T15 | README 测试命令可运行 | ✅ | `pnpm test`：75 passed |
 
 ## 加分项
@@ -353,6 +374,7 @@ curl -i http://localhost:3001/api/qc/<runId>
 │   ├── src/db/             # SQLite schema、连接、repository、init
 │   ├── src/http/           # routes、errorHandler
 │   └── tests/              # 规则、CSV、持久化、API、重启测试
+├── samples/                # 页面手工测试 CSV 与预期结果
 ├── e2e/                    # Playwright 浏览器端到端测试
 ├── playwright.config.ts
 ├── docs/

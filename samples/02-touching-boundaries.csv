@@ -1,0 +1,4 @@
+segment_id,start_ms,end_ms,action
+b1,0,2000,Pick
+b2,2000,4000,Place
+b3,4000,10000,Finish

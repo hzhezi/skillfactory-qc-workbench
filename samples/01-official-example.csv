@@ -1,0 +1,7 @@
+segment_id,start_ms,end_ms,action
+s1,0,2000,Pick up cup
+s2,2000,4200,Move cup
+s3,4100,5000,Place cup
+s4,5000,12000,Release cup
+s5,6000,7000,
+s6,7000,9000,Finish

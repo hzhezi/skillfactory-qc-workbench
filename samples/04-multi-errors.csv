@@ -1,0 +1,7 @@
+segment_id,start_ms,end_ms,action
+s1,0,2000,
+s2,1000,3000,Move
+s3,-1,500,Pick
+s4,0,0,Zero
+s5,5000,12000,Release
+s6,6000,7000,Finish

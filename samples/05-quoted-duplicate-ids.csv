@@ -1,0 +1,3 @@
+segment_id,start_ms,end_ms,action
+dup,0,1000,"Move, ""cup"""
+dup,1000,2000,Pick

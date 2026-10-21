@@ -86,7 +86,8 @@ pnpm test
 - 切换 All / Valid / Invalid，确认统计不变、表格变化；
 - 刷新页面，Network 面板确认出现 `GET /api/qc/{runId}` 200；
 - 提交缺少表头的 CSV，确认旧报告消失、URL 清空、显示 `MISSING_HEADER`；
-- 导出 CSV，确认筛选 Invalid 时仍导出全部 6 条，文件带 UTF-8 BOM。
+- 导出 CSV，确认筛选 Invalid 时仍导出全部 6 条，文件带 UTF-8 BOM；
+- `samples/` 下的 12 个页面测试 CSV 已通过真实 `POST /api/qc` / `GET /api/qc/{runId}` 逐文件核对，预期结果见 `samples/README.md`。
 
 证据位置：
 
@@ -97,7 +98,7 @@ pnpm test
 ## 5. 已知限制
 
 - E2E 首次运行需要安装 Playwright Chromium；未安装时 `pnpm test:e2e` 会失败。
-- 时间轴不绘制时间无法解析的 Segment，只显示无法定位数量。
+- 时间轴只绘制时间可解析且范围合法的 Segment；其余记录仍完整保留在下方表格中。
 - 重叠检查 O(n²)，面向题目限定的 ≤100 条记录。
 - 未实现报告历史列表、登录、视频播放；题目不要求。
 - 未公开的边界口径由项目自行定义，可能与其他实现不同；以题目公开规则为准。

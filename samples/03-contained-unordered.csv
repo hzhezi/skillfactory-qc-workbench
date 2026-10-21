@@ -1,0 +1,4 @@
+segment_id,start_ms,end_ms,action
+outer,0,9000,Outer
+inner,1000,2000,Inner
+tail,9000,10000,Tail
